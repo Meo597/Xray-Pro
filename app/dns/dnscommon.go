@@ -37,14 +37,15 @@ type IPRecord struct {
 	RCode  dnsmessage.RCode
 }
 
-func (r *IPRecord) getIPs() ([]net.Address, error) {
+func (r *IPRecord) getIPs() ([]net.Address, uint32, error) {
 	if r == nil || r.Expire.Before(time.Now()) {
-		return nil, errRecordNotFound
+		return nil, 0, errRecordNotFound
 	}
 	if r.RCode != dnsmessage.RCodeSuccess {
-		return nil, dns_feature.RCodeError(r.RCode)
+		return nil, 0, dns_feature.RCodeError(r.RCode)
 	}
-	return r.IP, nil
+	ttl := uint32(time.Until(r.Expire) / time.Second)
+	return r.IP, ttl, nil
 }
 
 func isNewer(baseRec *IPRecord, newRec *IPRecord) bool {
