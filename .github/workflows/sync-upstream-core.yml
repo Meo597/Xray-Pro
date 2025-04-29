@@ -12,7 +12,7 @@ jobs:
 
     env:
       UPSTREAM_REPO: XTLS/Xray-core
-      ORIGIN_REPO_LATEST_BRANCH: Xray-core/latest
+      LATEST_BRANCH: Xray-core/latest
 
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +54,8 @@ jobs:
             echo "Target tag ${{ env.LATEST_TAG }} points to commit: $TARGET_COMMIT"
 
             # Check if the branch exists on the *remote* (origin)
-            REMOTE_BRANCH_REF="refs/heads/${{ env.ORIGIN_REPO_LATEST_BRANCH }}"
-            echo "Checking remote branch existence: origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}"
+            REMOTE_BRANCH_REF="refs/heads/${{ env.LATEST_BRANCH }}"
+            echo "Checking remote branch existence: origin/${{ env.LATEST_BRANCH }}"
             # Use git ls-remote to check the remote ref. Output format: <hash>\t<ref>
             REMOTE_COMMIT_INFO=$(git ls-remote origin $REMOTE_BRANCH_REF)
 
@@ -65,38 +65,38 @@ jobs:
                # Extract hash from "<hash>\t<ref>" format
                CURRENT_REMOTE_COMMIT=$(echo "$REMOTE_COMMIT_INFO" | cut -f1)
                BRANCH_EXISTS_REMOTELY=true
-               echo "Remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
+               echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
             else
-               echo "Remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}' does not exist."
+               echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist."
             fi
 
             # Now, decide action based on remote existence and commit hash comparison
             if $BRANCH_EXISTS_REMOTELY && [ "$CURRENT_REMOTE_COMMIT" == "$TARGET_COMMIT" ]; then
-              echo "Remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}' is already synced with tag '${{ env.LATEST_TAG }}'."
+              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' is already synced with tag '${{ env.LATEST_TAG }}'."
               echo "LATEST_UPDATED=false" >> $GITHUB_ENV
               exit 0
             elif $BRANCH_EXISTS_REMOTELY; then
               # Branch exists remotely but points to a different commit
-              echo "Remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}' needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
+              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
               echo "Forcing push to update remote branch..."
               # Force push the target commit to the remote branch ref
               if git push --force origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
                 echo "LATEST_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to update remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}'."
+                echo "Error: Failed to update remote branch 'origin/${{ env.LATEST_BRANCH }}'."
                 echo "LATEST_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
             else
               # Branch does not exist remotely
-              echo "Remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}' does not exist. Creating it..."
+              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist. Creating it..."
               # Push the target commit to create the new remote branch ref
               if git push origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
                 echo "LATEST_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to create the new remote branch 'origin/${{ env.ORIGIN_REPO_LATEST_BRANCH }}'."
+                echo "Error: Failed to create the new remote branch 'origin/${{ env.LATEST_BRANCH }}'."
                 echo "LATEST_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
