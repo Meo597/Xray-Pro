@@ -14,6 +14,7 @@ jobs:
       UPSTREAM_REPO: XTLS/Xray-core
       LATEST_BRANCH: Xray-core/latest
       FEATURE_BRANCH_PREFIX: Xray-core/feat/
+      RELEASE_BRANCH: Xray-core/release
 
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +124,7 @@ jobs:
           git fetch origin --quiet
 
           # List all remote branches starting with FEATURE_BRANCH_PREFIX
-          FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||')
+          FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
 
           if [ -z "$FEATURE_BRANCHES" ]; then
             echo "No feature branches starting with '${{ env.FEATURE_BRANCH_PREFIX }}' found."
@@ -185,3 +186,101 @@ jobs:
             echo "Finished rebasing all feature branches."
             exit 0
           fi
+
+      - name: Create and merge to release branch
+        if: env.LATEST_TAG != '' && env.LATEST_UPDATED == 'true' && env.REBASE_FAILED == 'false'
+        run: |
+          echo "Creating release branch '${{ env.RELEASE_BRANCH }}' based on '${{ env.LATEST_BRANCH }}'"
+
+          # Fetch latest branches from origin
+          git fetch origin --quiet
+
+          # Check if release branch already exists on remote
+          RELEASE_BRANCH_REF="refs/heads/${{ env.RELEASE_BRANCH }}"
+          RELEASE_BRANCH_EXISTS=$(git ls-remote origin $RELEASE_BRANCH_REF)
+          if [ -n "$RELEASE_BRANCH_EXISTS" ]; then
+            echo "Release branch '${{ env.RELEASE_BRANCH }}' already exists on remote. Deleting it..."
+            if git push origin --delete "${{ env.RELEASE_BRANCH }}"; then
+              echo "Successfully deleted remote branch '${{ env.RELEASE_BRANCH }}'"
+              # Prune local references to deleted remote branches
+              git fetch origin --prune --quiet
+              echo "Pruned local references to deleted remote branches"
+            else
+              echo "Error: Failed to delete remote branch '${{ env.RELEASE_BRANCH }}'"
+              exit 1
+            fi
+          fi
+
+          # Clean up any uncommitted changes before switching or rebasing
+          git reset --hard 2>/dev/null || true
+          git clean -fd 2>/dev/null || true
+
+          # Checkout the latest branch as the base for release branch
+          if git checkout "${{ env.LATEST_BRANCH }}"; then
+            echo "Checked out base branch '${{ env.LATEST_BRANCH }}'"
+            # Create new release branch
+            if git checkout -b "${{ env.RELEASE_BRANCH }}"; then
+              echo "Created new release branch '${{ env.RELEASE_BRANCH }}'"
+              # Push the new release branch to remote
+              if git push origin "${{ env.RELEASE_BRANCH }}"; then
+                echo "Successfully pushed release branch '${{ env.RELEASE_BRANCH }}' to remote"
+              else
+                echo "Error: Failed to push release branch '${{ env.RELEASE_BRANCH }}' to remote"
+                exit 1
+              fi
+            else
+              echo "Error: Failed to create release branch '${{ env.RELEASE_BRANCH }}'"
+              exit 1
+            fi
+          else
+            echo "Error: Failed to checkout base branch '${{ env.LATEST_BRANCH }}'"
+            exit 1
+          fi
+
+          # Fetch all feature branches to merge
+          FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
+          if [ -z "$FEATURE_BRANCHES" ]; then
+            echo "No feature branches starting with '${{ env.FEATURE_BRANCH_PREFIX }}' found to merge."
+            exit 0
+          fi
+
+          echo "Merging feature branches into release branch: $FEATURE_BRANCHES"
+          MERGE_FAILED=false
+          FAILED_MERGES=""
+
+          # Loop through each feature branch and merge it into release branch
+          for branch in $FEATURE_BRANCHES; do
+            echo "Merging branch: $branch"
+            if git merge --no-edit "origin/$branch"; then
+              echo "Successfully merged branch $branch into '${{ env.RELEASE_BRANCH }}'"
+            else
+              echo "Error: Failed to merge branch $branch into '${{ env.RELEASE_BRANCH }}'. Creating an issue for manual intervention."
+              MERGE_FAILED=true
+              FAILED_MERGES="$FAILED_MERGES $branch"
+              # Create an issue for merge conflict
+              ISSUE_TITLE="Merge Conflict for branch $branch into ${{ env.RELEASE_BRANCH }}"
+              ISSUE_BODY="Merge of branch $branch into ${{ env.RELEASE_BRANCH }} failed due to conflicts. Please resolve manually.\n\n- Feature Branch: $branch\n- Release Branch: ${{ env.RELEASE_BRANCH }}\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              curl -X POST \
+                -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -d "{\"title\": \"$ISSUE_TITLE\", \"body\": \"$ISSUE_BODY\"}" \
+                "https://api.github.com/repos/${{ github.repository }}/issues"
+              # Abort the merge to clean up conflict state
+              git merge --abort 2>/dev/null || true
+            fi
+          done
+
+          # If merges were performed, push the updated release branch
+          if ! $MERGE_FAILED; then
+            if git push origin "${{ env.RELEASE_BRANCH }}"; then
+              echo "Successfully pushed updated release branch '${{ env.RELEASE_BRANCH }}' with merged features"
+            else
+              echo "Error: Failed to push updated release branch '${{ env.RELEASE_BRANCH }}'"
+              exit 1
+            fi
+          else
+            echo "Merge process completed with failures for the following branches:$FAILED_MERGES"
+            exit 1
+          fi
+
+          echo "Finished creating and merging to release branch."
