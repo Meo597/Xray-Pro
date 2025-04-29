@@ -13,6 +13,7 @@ jobs:
     env:
       UPSTREAM_REPO: XTLS/Xray-core
       LATEST_BRANCH: Xray-core/latest
+      FEATURE_BRANCH_PREFIX: Xray-core/feat/
 
     steps:
       - uses: actions/checkout@v4
@@ -106,4 +107,81 @@ jobs:
             echo "Error: Tag ${{ env.LATEST_TAG }} commit could not be resolved after fetching from upstream."
             echo "LATEST_UPDATED=false" >> $GITHUB_ENV
             exit 1
+          fi
+
+      - name: Rebase feature branches to stable release
+        if: env.LATEST_TAG != '' && env.LATEST_UPDATED == 'true'
+        run: |
+          TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_TAG }}^{commit}")
+          echo "Rebasing feature branches to commit: $TARGET_COMMIT (branch: ${{ env.LATEST_BRANCH }})"
+
+          # Initialize result variables
+          echo "REBASE_FAILED=false" >> $GITHUB_ENV
+          FAILED_BRANCHES=""
+
+          # Fetch all remote branches from origin
+          git fetch origin --quiet
+
+          # List all remote branches starting with FEATURE_BRANCH_PREFIX
+          FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||')
+
+          if [ -z "$FEATURE_BRANCHES" ]; then
+            echo "No feature branches starting with '${{ env.FEATURE_BRANCH_PREFIX }}' found."
+            echo "REBASE_FAILED=true" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "Found feature branches: $FEATURE_BRANCHES"
+
+          # Loop through each feature branch and rebase it to TARGET_COMMIT
+          for branch in $FEATURE_BRANCHES; do
+            echo "Processing branch: $branch"
+
+            # Clean up any uncommitted changes before switching or rebasing
+            git reset --hard 2>/dev/null || true
+            git clean -fd 2>/dev/null || true
+
+            # Checkout the branch locally
+            if git checkout "$branch"; then
+              # Rebase the branch onto TARGET_COMMIT
+              if git rebase "$TARGET_COMMIT"; then
+                echo "Successfully rebased $branch onto $TARGET_COMMIT"
+                # Force push the rebased branch to remote
+                if git push --force origin "$branch"; then
+                  echo "Successfully pushed rebased branch $branch to remote"
+                else
+                  echo "Error: Failed to push rebased branch $branch to remote"
+                  FAILED_BRANCHES="$FAILED_BRANCHES $branch (push failed)"
+                  echo "REBASE_FAILED=true" >> $GITHUB_ENV
+                fi
+              else
+                echo "Rebase failed for $branch. Creating an issue for manual intervention."
+                git rebase --abort
+                FAILED_BRANCHES="$FAILED_BRANCHES $branch (rebase conflict)"
+                echo "REBASE_FAILED=true" >> $GITHUB_ENV
+                # Create an issue for conflict resolution
+                ISSUE_TITLE="Rebase Conflict for branch $branch"
+                ISSUE_BODY="Rebase of branch $branch onto commit $TARGET_COMMIT failed due to conflicts. Please resolve manually.\n\n- Branch: $branch\n- Target Commit: $TARGET_COMMIT\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                curl -X POST \
+                  -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+                  -H "Accept: application/vnd.github.v3+json" \
+                  -d "{\"title\": \"$ISSUE_TITLE\", \"body\": \"$ISSUE_BODY\"}" \
+                  "https://api.github.com/repos/${{ github.repository }}/issues"
+              fi
+            else
+              echo "Error: Failed to checkout $branch"
+              FAILED_BRANCHES="$FAILED_BRANCHES $branch (checkout failed)"
+              echo "REBASE_FAILED=true" >> $GITHUB_ENV
+            fi
+          done
+
+          # Summary of failed branches
+          if [ -n "$FAILED_BRANCHES" ]; then
+            echo "Rebase process completed with failures for the following branches:$FAILED_BRANCHES"
+            echo "Finished rebasing all feature branches."
+            exit 1
+          else
+            echo "Rebase process completed successfully for all branches."
+            echo "Finished rebasing all feature branches."
+            exit 0
           fi
