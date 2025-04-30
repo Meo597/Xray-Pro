@@ -28,9 +28,27 @@ jobs:
 
       - name: Check upstream stable release
         run: |
+          echo "Fetching latest stable release from ${{ env.UPSTREAM_REPO }}"
+
           # Fetch the latest non-prerelease release tag name
-          latest_stable_tag=$(curl -s "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases?per_page=100" | \
-            jq -r '.[] | select(.prerelease == false) | .tag_name' | head -1)
+          latest_stable_tag=""
+          for attempt in {1..3}; do
+            response=$(curl -s -w "%{http_code}" "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases?per_page=100")
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | head -n -1)
+            if [ "$http_code" -eq 200 ]; then
+              latest_stable_tag=$(echo "$body" | jq -r '.[] | select(.prerelease == false) | .tag_name' | head -1)
+              break
+            else
+              echo "API request failed with status $http_code (attempt $attempt/3)"
+              if [ "$attempt" -eq 3 ]; then
+                echo "Error: Failed to fetch releases after 3 attempts. Check network or GitHub API limits."
+                echo "LATEST_TAG=" >> $GITHUB_ENV
+                exit 1
+              fi
+              sleep 30
+            fi
+          done
 
           if [ -z "$latest_stable_tag" ]; then
             echo "No stable release found."
@@ -47,7 +65,11 @@ jobs:
           # Add upstream remote and fetch its tags
           git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git || true
           echo "Fetching upstream tags..."
-          git fetch upstream --tags --force
+          if ! git fetch upstream --tags --force; then
+            echo "Error: Failed to fetch tags from upstream. Check network or permissions."
+            echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+            exit 1
+          fi
 
           # Check if the target tag commit exists locally after fetch
           echo "Verifying target tag ${{ env.LATEST_TAG }} locally..."
@@ -60,16 +82,21 @@ jobs:
             echo "Checking remote branch existence: origin/${{ env.LATEST_BRANCH }}"
             # Use git ls-remote to check the remote ref. Output format: <hash>\t<ref>
             REMOTE_COMMIT_INFO=$(git ls-remote origin $REMOTE_BRANCH_REF)
+            if [ $? -ne 0 ]; then
+              echo "Error: Failed to check remote branch with git ls-remote. Check network or permissions."
+              echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+              exit 1
+            fi
 
             CURRENT_REMOTE_COMMIT=""
             BRANCH_EXISTS_REMOTELY=false
             if [ -n "$REMOTE_COMMIT_INFO" ]; then
-               # Extract hash from "<hash>\t<ref>" format
-               CURRENT_REMOTE_COMMIT=$(echo "$REMOTE_COMMIT_INFO" | cut -f1)
-               BRANCH_EXISTS_REMOTELY=true
-               echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
+              # Extract hash from "<hash>\t<ref>" format
+              CURRENT_REMOTE_COMMIT=$(echo "$REMOTE_COMMIT_INFO" | cut -f1)
+              BRANCH_EXISTS_REMOTELY=true
+              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
             else
-               echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist."
+              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist."
             fi
 
             # Now, decide action based on remote existence and commit hash comparison
@@ -78,7 +105,6 @@ jobs:
               echo "LATEST_UPDATED=false" >> $GITHUB_ENV
               exit 0
             elif $BRANCH_EXISTS_REMOTELY; then
-              # Branch exists remotely but points to a different commit
               echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
               echo "Forcing push to update remote branch..."
               # Force push the target commit to the remote branch ref
@@ -86,19 +112,18 @@ jobs:
                 echo "LATEST_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to update remote branch 'origin/${{ env.LATEST_BRANCH }}'."
+                echo "Error: Failed to update remote branch 'origin/${{ env.LATEST_BRANCH }}'. Check permissions or branch protection rules."
                 echo "LATEST_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
             else
-              # Branch does not exist remotely
               echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist. Creating it..."
               # Push the target commit to create the new remote branch ref
               if git push origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
                 echo "LATEST_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to create the new remote branch 'origin/${{ env.LATEST_BRANCH }}'."
+                echo "Error: Failed to create the new remote branch 'origin/${{ env.LATEST_BRANCH }}'. Check permissions."
                 echo "LATEST_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
@@ -121,11 +146,14 @@ jobs:
           FAILED_BRANCHES=""
 
           # Fetch all remote branches from origin
-          git fetch origin --quiet
+          if ! git fetch origin --quiet; then
+            echo "Error: Failed to fetch branches from origin. Check network or permissions."
+            echo "REBASE_FAILED=true" >> $GITHUB_ENV
+            exit 1
+          fi
 
           # List all remote branches starting with FEATURE_BRANCH_PREFIX
           FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
-
           if [ -z "$FEATURE_BRANCHES" ]; then
             echo "No feature branches starting with '${{ env.FEATURE_BRANCH_PREFIX }}' found."
             echo "REBASE_FAILED=true" >> $GITHUB_ENV
@@ -151,7 +179,7 @@ jobs:
                 if git push --force origin "$branch"; then
                   echo "Successfully pushed rebased branch $branch to remote"
                 else
-                  echo "Error: Failed to push rebased branch $branch to remote"
+                  echo "Error: Failed to push rebased branch $branch to remote. Check permissions or branch protection rules."
                   FAILED_BRANCHES="$FAILED_BRANCHES $branch (push failed)"
                   echo "REBASE_FAILED=true" >> $GITHUB_ENV
                 fi
@@ -163,11 +191,15 @@ jobs:
                 # Create an issue for conflict resolution
                 ISSUE_TITLE="Rebase Conflict for branch $branch"
                 ISSUE_BODY="Rebase of branch $branch onto commit $TARGET_COMMIT failed due to conflicts. Please resolve manually.\n\n- Branch: $branch\n- Target Commit: $TARGET_COMMIT\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                curl -X POST \
+                if curl -X POST \
                   -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
                   -H "Accept: application/vnd.github.v3+json" \
                   -d "{\"title\": \"$ISSUE_TITLE\", \"body\": \"$ISSUE_BODY\"}" \
-                  "https://api.github.com/repos/${{ github.repository }}/issues"
+                  "https://api.github.com/repos/${{ github.repository }}/issues"; then
+                  echo "Successfully created issue for rebase conflict of branch $branch"
+                else
+                  echo "Error: Failed to create issue for rebase conflict of branch $branch. Check token permissions or API limits."
+                fi
               fi
             else
               echo "Error: Failed to checkout $branch"
@@ -192,26 +224,33 @@ jobs:
         run: |
           echo "Creating release branch '${{ env.RELEASE_BRANCH }}' based on '${{ env.LATEST_BRANCH }}'"
 
-          # Fetch latest branches from origin
-          git fetch origin --quiet
-
           # Check if release branch already exists on remote
           RELEASE_BRANCH_REF="refs/heads/${{ env.RELEASE_BRANCH }}"
+          echo "Checking if release branch '${{ env.RELEASE_BRANCH }}' exists on remote..."
           RELEASE_BRANCH_EXISTS=$(git ls-remote origin $RELEASE_BRANCH_REF)
+          if [ $? -ne 0 ]; then
+            echo "Error: Failed to check remote branch with git ls-remote. Check network or permissions."
+            exit 1
+          fi
+
           if [ -n "$RELEASE_BRANCH_EXISTS" ]; then
             echo "Release branch '${{ env.RELEASE_BRANCH }}' already exists on remote. Deleting it..."
+            # Delete remote branch
             if git push origin --delete "${{ env.RELEASE_BRANCH }}"; then
               echo "Successfully deleted remote branch '${{ env.RELEASE_BRANCH }}'"
               # Prune local references to deleted remote branches
-              git fetch origin --prune --quiet
-              echo "Pruned local references to deleted remote branches"
+              if git fetch origin --prune --quiet; then
+                echo "Pruned local references to deleted remote branches"
+              else
+                echo "Error: Failed to prune local references. Continuing anyway."
+              fi
             else
-              echo "Error: Failed to delete remote branch '${{ env.RELEASE_BRANCH }}'"
+              echo "Error: Failed to delete remote branch '${{ env.RELEASE_BRANCH }}'. Check permissions or branch protection rules."
               exit 1
             fi
           fi
 
-          # Clean up any uncommitted changes before switching or rebasing
+          # Clean up any uncommitted changes before switching
           git reset --hard 2>/dev/null || true
           git clean -fd 2>/dev/null || true
 
@@ -225,7 +264,7 @@ jobs:
               if git push origin "${{ env.RELEASE_BRANCH }}"; then
                 echo "Successfully pushed release branch '${{ env.RELEASE_BRANCH }}' to remote"
               else
-                echo "Error: Failed to push release branch '${{ env.RELEASE_BRANCH }}' to remote"
+                echo "Error: Failed to push release branch '${{ env.RELEASE_BRANCH }}' to remote. Check permissions."
                 exit 1
               fi
             else
@@ -260,11 +299,15 @@ jobs:
               # Create an issue for merge conflict
               ISSUE_TITLE="Merge Conflict for branch $branch into ${{ env.RELEASE_BRANCH }}"
               ISSUE_BODY="Merge of branch $branch into ${{ env.RELEASE_BRANCH }} failed due to conflicts. Please resolve manually.\n\n- Feature Branch: $branch\n- Release Branch: ${{ env.RELEASE_BRANCH }}\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              curl -X POST \
+              if curl -X POST \
                 -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
                 -H "Accept: application/vnd.github.v3+json" \
                 -d "{\"title\": \"$ISSUE_TITLE\", \"body\": \"$ISSUE_BODY\"}" \
-                "https://api.github.com/repos/${{ github.repository }}/issues"
+                "https://api.github.com/repos/${{ github.repository }}/issues"; then
+                echo "Successfully created issue for merge conflict of branch $branch"
+              else
+                echo "Error: Failed to create issue for merge conflict of branch $branch. Check token permissions or API limits."
+              fi
               # Abort the merge to clean up conflict state
               git merge --abort 2>/dev/null || true
             fi
@@ -275,7 +318,7 @@ jobs:
             if git push origin "${{ env.RELEASE_BRANCH }}"; then
               echo "Successfully pushed updated release branch '${{ env.RELEASE_BRANCH }}' with merged features"
             else
-              echo "Error: Failed to push updated release branch '${{ env.RELEASE_BRANCH }}'"
+              echo "Error: Failed to push updated release branch '${{ env.RELEASE_BRANCH }}'. Check permissions."
               exit 1
             fi
           else
