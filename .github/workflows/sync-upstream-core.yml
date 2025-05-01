@@ -290,7 +290,7 @@ jobs:
           # Loop through each enhance branch and merge it into release branch
           for branch in $ENHANCE_BRANCHES; do
             echo "Merging branch: $branch"
-            if git merge --no-edit "origin/$branch"; then
+            if git merge --no-ff --no-edit "origin/$branch"; then
               echo "Successfully merged branch $branch into '${{ env.RELEASE_BRANCH }}'"
             else
               echo "Error: Failed to merge branch $branch into '${{ env.RELEASE_BRANCH }}'. Creating an issue for manual intervention."
