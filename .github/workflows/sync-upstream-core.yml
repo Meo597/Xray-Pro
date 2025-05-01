@@ -13,7 +13,7 @@ jobs:
     env:
       UPSTREAM_REPO: XTLS/Xray-core
       LATEST_BRANCH: Xray-core/latest
-      FEATURE_BRANCH_PREFIX: Xray-core/feat/
+      ENHANCE_BRANCH_PREFIX: Xray-core/pro/
       RELEASE_BRANCH: Xray-core/release
 
     steps:
@@ -135,11 +135,11 @@ jobs:
             exit 1
           fi
 
-      - name: Rebase feature branches to stable release
+      - name: Rebase enhance branches to stable release
         if: env.LATEST_TAG != '' && env.LATEST_UPDATED == 'true'
         run: |
           TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_TAG }}^{commit}")
-          echo "Rebasing feature branches to commit: $TARGET_COMMIT (branch: ${{ env.LATEST_BRANCH }})"
+          echo "Rebasing enhance branches to commit: $TARGET_COMMIT (branch: ${{ env.LATEST_BRANCH }})"
 
           # Initialize result variables
           echo "REBASE_FAILED=false" >> $GITHUB_ENV
@@ -152,18 +152,18 @@ jobs:
             exit 1
           fi
 
-          # List all remote branches starting with FEATURE_BRANCH_PREFIX
-          FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
-          if [ -z "$FEATURE_BRANCHES" ]; then
-            echo "No feature branches starting with '${{ env.FEATURE_BRANCH_PREFIX }}' found."
+          # List all remote branches starting with ENHANCE_BRANCH_PREFIX
+          ENHANCE_BRANCHES=$(git branch -r | grep "origin/${{ env.ENHANCE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
+          if [ -z "$ENHANCE_BRANCHES" ]; then
+            echo "No enhance branches starting with '${{ env.ENHANCE_BRANCH_PREFIX }}' found."
             echo "REBASE_FAILED=true" >> $GITHUB_ENV
             exit 0
           fi
 
-          echo "Found feature branches: $FEATURE_BRANCHES"
+          echo "Found enhance branches: $ENHANCE_BRANCHES"
 
-          # Loop through each feature branch and rebase it to TARGET_COMMIT
-          for branch in $FEATURE_BRANCHES; do
+          # Loop through each enhance branch and rebase it to TARGET_COMMIT
+          for branch in $ENHANCE_BRANCHES; do
             echo "Processing branch: $branch"
 
             # Clean up any uncommitted changes before switching or rebasing
@@ -211,11 +211,11 @@ jobs:
           # Summary of failed branches
           if [ -n "$FAILED_BRANCHES" ]; then
             echo "Rebase process completed with failures for the following branches:$FAILED_BRANCHES"
-            echo "Finished rebasing all feature branches."
+            echo "Finished rebasing all enhance branches."
             exit 1
           else
             echo "Rebase process completed successfully for all branches."
-            echo "Finished rebasing all feature branches."
+            echo "Finished rebasing all enhance branches."
             exit 0
           fi
 
@@ -276,19 +276,19 @@ jobs:
             exit 1
           fi
 
-          # Fetch all feature branches to merge
-          FEATURE_BRANCHES=$(git branch -r | grep "origin/${{ env.FEATURE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
-          if [ -z "$FEATURE_BRANCHES" ]; then
-            echo "No feature branches starting with '${{ env.FEATURE_BRANCH_PREFIX }}' found to merge."
+          # Fetch all enhance branches to merge
+          ENHANCE_BRANCHES=$(git branch -r | grep "origin/${{ env.ENHANCE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
+          if [ -z "$ENHANCE_BRANCHES" ]; then
+            echo "No enhance branches starting with '${{ env.ENHANCE_BRANCH_PREFIX }}' found to merge."
             exit 0
           fi
 
-          echo "Merging feature branches into release branch: $FEATURE_BRANCHES"
+          echo "Merging enhance branches into release branch: $ENHANCE_BRANCHES"
           MERGE_FAILED=false
           FAILED_MERGES=""
 
-          # Loop through each feature branch and merge it into release branch
-          for branch in $FEATURE_BRANCHES; do
+          # Loop through each enhance branch and merge it into release branch
+          for branch in $ENHANCE_BRANCHES; do
             echo "Merging branch: $branch"
             if git merge --no-edit "origin/$branch"; then
               echo "Successfully merged branch $branch into '${{ env.RELEASE_BRANCH }}'"
@@ -298,7 +298,7 @@ jobs:
               FAILED_MERGES="$FAILED_MERGES $branch"
               # Create an issue for merge conflict
               ISSUE_TITLE="Merge Conflict for branch $branch into ${{ env.RELEASE_BRANCH }}"
-              ISSUE_BODY="Merge of branch $branch into ${{ env.RELEASE_BRANCH }} failed due to conflicts. Please resolve manually.\n\n- Feature Branch: $branch\n- Release Branch: ${{ env.RELEASE_BRANCH }}\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ISSUE_BODY="Merge of branch $branch into ${{ env.RELEASE_BRANCH }} failed due to conflicts. Please resolve manually.\n\n- Enhance Branch: $branch\n- Release Branch: ${{ env.RELEASE_BRANCH }}\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               if curl -X POST \
                 -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
                 -H "Accept: application/vnd.github.v3+json" \
@@ -316,7 +316,7 @@ jobs:
           # If merges were performed, push the updated release branch
           if ! $MERGE_FAILED; then
             if git push origin "${{ env.RELEASE_BRANCH }}"; then
-              echo "Successfully pushed updated release branch '${{ env.RELEASE_BRANCH }}' with merged features"
+              echo "Successfully pushed updated release branch '${{ env.RELEASE_BRANCH }}' with merged enhances"
             else
               echo "Error: Failed to push updated release branch '${{ env.RELEASE_BRANCH }}'. Check permissions."
               exit 1
