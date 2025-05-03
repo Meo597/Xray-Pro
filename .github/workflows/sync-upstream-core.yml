@@ -33,11 +33,11 @@ jobs:
           # Fetch the latest stable release tag name
           latest_stable_tag=""
           for attempt in {1..3}; do
-            response=$(curl -s -w "%{http_code}" "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases?per_page=100")
+            response=$(curl -s -w "%{http_code}" "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/tags?per_page=100")
             http_code=$(echo "$response" | tail -n1)
             body=$(echo "$response" | head -n -1)
             if [ "$http_code" -eq 200 ]; then
-              latest_stable_tag=$(echo "$body" | jq -r '.[] | select(.prerelease == false) | .tag_name' | head -1)
+              latest_stable_tag=$(echo "$body" | jq -r '.[] | .name | select(test("^v[0-9]+\\.[0-9]{6}\\.[0-9]+"))' | head -1)
               break
             else
               echo "API request failed with status $http_code (attempt $attempt/3)"
