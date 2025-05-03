@@ -21,27 +21,27 @@
 我們的 GitHub Workflows 旨在簡化追蹤上游變更和整合本地增強的過程：
 
 - **追蹤上游穩定版本**：工作流程會自動追蹤上游倉庫（例如 `XTLS/Xray-core`）的最新穩定版本。本地鏡像儲存在定義為 `STABLE_BRANCH` 的分支中。
-- **Rebase 增強分支**：本地增強分支，前綴為 `ENHANCE_BRANCH_PREFIX`（例如 `pro`），會被 rebase 到 `STABLE_BRANCH` 上，確保與上游基線保持同步。這些分支遵循嚴格的命名規範，使用數字前綴以強制合併順序並防止潛在衝突（例如 `Xray-core/pro/0001/feat-xxxxxxxx` 或 `Xray-core/pro/0001/fix-xxxxxxxxxxx`）。
-- **順序合併**：rebase 後，增強分支將根據數字前綴按順序合併到臨時的 `RELEASE_BRANCH` 中。此分支會保留，直到有新的增強分支添加或下一次上游更新發生。
+- **Rebase 增強分支**：本地增強分支，前綴為 `ENHANCE_BRANCH_PREFIX`（例如 `pro`），會被 rebase 到 `STABLE_BRANCH` 上，確保與上游基線保持同步。這些分支遵循嚴格的命名規範，使用年月序號前綴以強制合併順序並防止潛在衝突（例如 `Xray-core/pro/250588/feat-xxxxxxxx` 或 `Xray-core/pro/250588/fix-xxxxxxxxxxx`）。
+- **順序合併**：rebase 後，增強分支將根據年月序號前綴按順序合併到臨時的 `RELEASE_BRANCH` 中。此分支會保留，直到有新的增強分支添加或下一次上游更新發生。
 - **版本發佈**：合併完成後，基於 `RELEASE_BRANCH` 的內容發佈新的 `Xray-Pro` 版本。
 
 ### 處理多個上游倉庫
 
-此倉庫支持同時管理多個上游倉庫。每個上游倉庫（例如 `XTLS/Xray-core`）由一個專用的 GitHub Workflow YAML 文件處理，允許在此單一倉庫中進行統一管理。您可以根據需要複製和自定義工作流程文件，以針對不同的上游倉庫，確保每個上游都有自己的追蹤和合併流程。增強分支結構反映其對應的上游（例如 `Xray-core/pro/0001/feat-xxxxxxxx` 對應 `XTLS/Xray-core`）。
+此倉庫支持同時管理多個上游倉庫。每個上游倉庫（例如 `XTLS/Xray-core`）由一個專用的 GitHub Workflow YAML 文件處理，允許在此單一倉庫中進行統一管理。您可以根據需要複製和自定義工作流程文件，以針對不同的上游倉庫，確保每個上游都有自己的追蹤和合併流程。增強分支結構反映其對應的上游（例如 `Xray-core/pro/250588/feat-xxxxxxxx` 對應 `XTLS/Xray-core`）。
 
 ### 分支命名規範
 
 要貢獻或 fork 此項目，請遵循以下增強分支的命名規範：
 
-- **格式**：`<upstream-name>/pro/<number>/<type>-<description>`
+- **格式**：`<upstream-name>/pro/<yymmnn>/<type>-<description>`
   - `<upstream-name>`：上游倉庫的名稱（例如 `Xray-core` 對應 `XTLS/Xray-core`）。
   - `pro`：定義為 `ENHANCE_BRANCH_PREFIX` 的前綴，表示本地增強分支。
-  - `<number>`：零填充的數字前綴（例如 `0001`），以確保合併順序並避免衝突。
+  - `<yymmnn>`：一個六位數字前綴，格式為 `YYMMNN`，其中 `YY` 是年份後兩位（如 2025 年為 `25`），`MM` 是兩位月份（如 5 月為 `05`），`NN` 是當月內的兩位序號（如第 88 個為 `88`），以確保合併順序並避免衝突。
   - `<type>`：變更類型（例如 `feat` 表示功能，`fix` 表示修復）。
   - `<description>`：變更的簡要描述。
 - **示例**：
-  - `Xray-core/pro/0001/feat-custom-routing`
-  - `Xray-core/pro/0002/fix-memory-leak`
+  - `Xray-core/pro/250588/feat-custom-routing`
+  - `Xray-core/pro/250589/fix-memory-leak`
 
 遵循此規範，工作流程將確保分支按正確順序合併，最大限度減少整合過程中的潛在衝突。
 

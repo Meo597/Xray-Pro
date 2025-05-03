@@ -21,27 +21,27 @@ If you are interested in forking or contributing to `Xray-Pro`, the following in
 Our GitHub Workflows are designed to streamline the process of tracking upstream changes and integrating local enhancements:
 
 - **Tracking Upstream Stable Releases**: The workflows automatically track the latest stable release from the upstream repository (e.g., `XTLS/Xray-core`). A local mirror of the upstream stable release is maintained in the branch defined as `STABLE_BRANCH`.
-- **Rebasing Enhancement Branches**: Local enhancement branches, prefixed with `ENHANCE_BRANCH_PREFIX` (e.g., `pro`), are rebased onto the `STABLE_BRANCH` to ensure they are up-to-date with the upstream baseline. These branches follow a strict naming convention with a numeric prefix to enforce merge order and prevent potential conflicts (e.g., `Xray-core/pro/0001/feat-xxxxxxxx` or `Xray-core/pro/0001/fix-xxxxxxxxxxx`).
-- **Sequential Merging**: After rebasing, enhancement branches are merged into a temporary `RELEASE_BRANCH` in sequential order based on their numeric prefix. This branch is retained until a new enhancement branch is added or the next upstream update occurs.
+- **Rebasing Enhancement Branches**: Local enhancement branches, prefixed with `ENHANCE_BRANCH_PREFIX` (e.g., `pro`), are rebased onto the `STABLE_BRANCH` to ensure they are up-to-date with the upstream baseline. These branches follow a strict naming convention with a year-month-sequence prefix to enforce merge order and prevent potential conflicts (e.g., `Xray-core/pro/250588/feat-xxxxxxxx` or `Xray-core/pro/250588/fix-xxxxxxxxxxx`).
+- **Sequential Merging**: After rebasing, enhancement branches are merged into a temporary `RELEASE_BRANCH` in sequential order based on their year-month-sequence prefix. This branch is retained until a new enhancement branch is added or the next upstream update occurs.
 - **Version Release**: Once merging is complete, a new version of `Xray-Pro` is released based on the contents of `RELEASE_BRANCH`.
 
 ### Handling Multiple Upstream Repositories
 
-This repository supports managing multiple upstream repositories simultaneously. Each upstream repository (e.g., `XTLS/Xray-core`) is handled by a dedicated GitHub Workflow YAML file, allowing unified management within this single repository. You can duplicate and customize workflow files to target different upstream repositories as needed, ensuring each upstream has its own tracking and merging process. Enhancement branches are structured to reflect their corresponding upstream (e.g., `Xray-core/pro/0001/feat-xxxxxxxx` for `XTLS/Xray-core`).
+This repository supports managing multiple upstream repositories simultaneously. Each upstream repository (e.g., `XTLS/Xray-core`) is handled by a dedicated GitHub Workflow YAML file, allowing unified management within this single repository. You can duplicate and customize workflow files to target different upstream repositories as needed, ensuring each upstream has its own tracking and merging process. Enhancement branches are structured to reflect their corresponding upstream (e.g., `Xray-core/pro/250588/feat-xxxxxxxx` for `XTLS/Xray-core`).
 
 ### Branch Naming Convention
 
 To contribute or fork this project, adhere to the following branch naming convention for enhancement branches:
 
-- **Format**: `<upstream-name>/pro/<number>/<type>-<description>`
+- **Format**: `<upstream-name>/pro/<yymmnn>/<type>-<description>`
   - `<upstream-name>`: The name of the upstream repository (e.g., `Xray-core` for `XTLS/Xray-core`).
   - `pro`: The prefix defined as `ENHANCE_BRANCH_PREFIX`, indicating a local enhancement branch.
-  - `<number>`: A zero-padded numeric prefix (e.g., `0001`) to ensure merge order and avoid conflicts.
+  - `<yymmnn>`: A six-digit prefix in the format `YYMMNN`, where `YY` is the last two digits of the year (e.g., `25` for 2025), `MM` is the two-digit month (e.g., `05` for May), and `NN` is the two-digit sequence number within the month (e.g., `88` for the 88th change). This ensures merge order and avoids conflicts.
   - `<type>`: The type of change (e.g., `feat` for feature, `fix` for fix).
   - `<description>`: A brief description of the change.
 - **Examples**:
-  - `Xray-core/pro/0001/feat-custom-routing`
-  - `Xray-core/pro/0002/fix-memory-leak`
+  - `Xray-core/pro/250588/feat-custom-routing`
+  - `Xray-core/pro/250589/fix-memory-leak`
 
 By following this convention, the workflow ensures that branches are merged in the correct order, minimizing potential conflicts during integration.
 
