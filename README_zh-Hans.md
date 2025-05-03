@@ -20,8 +20,8 @@
 
 我们的 GitHub Workflows 旨在简化追踪上游变更和整合本地增强的过程：
 
-- **追踪上游稳定版本**：工作流程会自动追踪上游仓库（例如 `XTLS/Xray-core`）的最新稳定版本。本地镜像存储在定义为 `LATEST_BRANCH` 的分支中。
-- **Rebase 增强分支**：本地增强分支，前缀为 `ENHANCE_BRANCH_PREFIX`（例如 `pro`），会被 rebase 到 `LATEST_BRANCH` 上，确保与上游基线保持同步。这些分支遵循严格的命名规范，使用数字前缀以强制合并顺序并防止潜在冲突（例如 `Xray-core/pro/0001/feat-xxxxxxxx` 或 `Xray-core/pro/0001/fix-xxxxxxxxxxx`）。
+- **追踪上游稳定版本**：工作流程会自动追踪上游仓库（例如 `XTLS/Xray-core`）的最新稳定版本。本地镜像存储在定义为 `STABLE_BRANCH` 的分支中。
+- **Rebase 增强分支**：本地增强分支，前缀为 `ENHANCE_BRANCH_PREFIX`（例如 `pro`），会被 rebase 到 `STABLE_BRANCH` 上，确保与上游基线保持同步。这些分支遵循严格的命名规范，使用数字前缀以强制合并顺序并防止潜在冲突（例如 `Xray-core/pro/0001/feat-xxxxxxxx` 或 `Xray-core/pro/0001/fix-xxxxxxxxxxx`）。
 - **顺序合并**：rebase 后，增强分支将根据数字前缀按顺序合并到临时的 `RELEASE_BRANCH` 中。此分支会保留，直到有新的增强分支添加或下一次上游更新发生。
 - **版本发布**：合并完成后，基于 `RELEASE_BRANCH` 的内容发布新的 `Xray-Pro` 版本。
 

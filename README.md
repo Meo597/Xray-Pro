@@ -20,8 +20,8 @@ If you are interested in forking or contributing to `Xray-Pro`, the following in
 
 Our GitHub Workflows are designed to streamline the process of tracking upstream changes and integrating local enhancements:
 
-- **Tracking Upstream Stable Releases**: The workflows automatically track the latest stable release from the upstream repository (e.g., `XTLS/Xray-core`). A local mirror of the upstream stable release is maintained in the branch defined as `LATEST_BRANCH`.
-- **Rebasing Enhancement Branches**: Local enhancement branches, prefixed with `ENHANCE_BRANCH_PREFIX` (e.g., `pro`), are rebased onto the `LATEST_BRANCH` to ensure they are up-to-date with the upstream baseline. These branches follow a strict naming convention with a numeric prefix to enforce merge order and prevent potential conflicts (e.g., `Xray-core/pro/0001/feat-xxxxxxxx` or `Xray-core/pro/0001/fix-xxxxxxxxxxx`).
+- **Tracking Upstream Stable Releases**: The workflows automatically track the latest stable release from the upstream repository (e.g., `XTLS/Xray-core`). A local mirror of the upstream stable release is maintained in the branch defined as `STABLE_BRANCH`.
+- **Rebasing Enhancement Branches**: Local enhancement branches, prefixed with `ENHANCE_BRANCH_PREFIX` (e.g., `pro`), are rebased onto the `STABLE_BRANCH` to ensure they are up-to-date with the upstream baseline. These branches follow a strict naming convention with a numeric prefix to enforce merge order and prevent potential conflicts (e.g., `Xray-core/pro/0001/feat-xxxxxxxx` or `Xray-core/pro/0001/fix-xxxxxxxxxxx`).
 - **Sequential Merging**: After rebasing, enhancement branches are merged into a temporary `RELEASE_BRANCH` in sequential order based on their numeric prefix. This branch is retained until a new enhancement branch is added or the next upstream update occurs.
 - **Version Release**: Once merging is complete, a new version of `Xray-Pro` is released based on the contents of `RELEASE_BRANCH`.
 

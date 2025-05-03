@@ -12,7 +12,7 @@ jobs:
 
     env:
       UPSTREAM_REPO: XTLS/Xray-core
-      LATEST_BRANCH: Xray-core/latest
+      STABLE_BRANCH: Xray-core/stable
       ENHANCE_BRANCH_PREFIX: Xray-core/pro/
       RELEASE_BRANCH: Xray-core/release
 
@@ -30,7 +30,7 @@ jobs:
         run: |
           echo "Fetching latest stable release from ${{ env.UPSTREAM_REPO }}"
 
-          # Fetch the latest non-prerelease release tag name
+          # Fetch the latest stable release tag name
           latest_stable_tag=""
           for attempt in {1..3}; do
             response=$(curl -s -w "%{http_code}" "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases?per_page=100")
@@ -43,7 +43,7 @@ jobs:
               echo "API request failed with status $http_code (attempt $attempt/3)"
               if [ "$attempt" -eq 3 ]; then
                 echo "Error: Failed to fetch releases after 3 attempts. Check network or GitHub API limits."
-                echo "LATEST_TAG=" >> $GITHUB_ENV
+                echo "LATEST_STABLE_TAG=" >> $GITHUB_ENV
                 exit 1
               fi
               sleep 30
@@ -52,39 +52,39 @@ jobs:
 
           if [ -z "$latest_stable_tag" ]; then
             echo "No stable release found."
-            echo "LATEST_TAG=" >> $GITHUB_ENV
+            echo "LATEST_STABLE_TAG=" >> $GITHUB_ENV
             exit 1
           fi
 
           echo "Latest stable tag: $latest_stable_tag"
-          echo "LATEST_TAG=$latest_stable_tag" >> $GITHUB_ENV
+          echo "LATEST_STABLE_TAG=$latest_stable_tag" >> $GITHUB_ENV
 
       - name: Sync upstream stable release
-        if: env.LATEST_TAG != ''
+        if: env.LATEST_STABLE_TAG != ''
         run: |
           # Add upstream remote and fetch its tags
           git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git || true
           echo "Fetching upstream tags..."
           if ! git fetch upstream --tags --force; then
             echo "Error: Failed to fetch tags from upstream. Check network or permissions."
-            echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+            echo "STABLE_UPDATED=false" >> $GITHUB_ENV
             exit 1
           fi
 
           # Check if the target tag commit exists locally after fetch
-          echo "Verifying target tag ${{ env.LATEST_TAG }} locally..."
-          if git rev-parse --verify "refs/tags/${{ env.LATEST_TAG }}^{commit}" >/dev/null 2>&1; then
-            TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_TAG }}^{commit}")
-            echo "Target tag ${{ env.LATEST_TAG }} points to commit: $TARGET_COMMIT"
+          echo "Verifying target tag ${{ env.LATEST_STABLE_TAG }} locally..."
+          if git rev-parse --verify "refs/tags/${{ env.LATEST_STABLE_TAG }}^{commit}" >/dev/null 2>&1; then
+            TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_STABLE_TAG }}^{commit}")
+            echo "Target tag ${{ env.LATEST_STABLE_TAG }} points to commit: $TARGET_COMMIT"
 
             # Check if the branch exists on the *remote* (origin)
-            REMOTE_BRANCH_REF="refs/heads/${{ env.LATEST_BRANCH }}"
-            echo "Checking remote branch existence: origin/${{ env.LATEST_BRANCH }}"
+            REMOTE_BRANCH_REF="refs/heads/${{ env.STABLE_BRANCH }}"
+            echo "Checking remote branch existence: origin/${{ env.STABLE_BRANCH }}"
             # Use git ls-remote to check the remote ref. Output format: <hash>\t<ref>
             REMOTE_COMMIT_INFO=$(git ls-remote origin $REMOTE_BRANCH_REF)
             if [ $? -ne 0 ]; then
               echo "Error: Failed to check remote branch with git ls-remote. Check network or permissions."
-              echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+              echo "STABLE_UPDATED=false" >> $GITHUB_ENV
               exit 1
             fi
 
@@ -94,52 +94,52 @@ jobs:
               # Extract hash from "<hash>\t<ref>" format
               CURRENT_REMOTE_COMMIT=$(echo "$REMOTE_COMMIT_INFO" | cut -f1)
               BRANCH_EXISTS_REMOTELY=true
-              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
+              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
             else
-              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist."
+              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' does not exist."
             fi
 
             # Now, decide action based on remote existence and commit hash comparison
             if $BRANCH_EXISTS_REMOTELY && [ "$CURRENT_REMOTE_COMMIT" == "$TARGET_COMMIT" ]; then
-              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' is already synced with tag '${{ env.LATEST_TAG }}'."
-              echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' is already synced with tag '${{ env.LATEST_STABLE_TAG }}'."
+              echo "STABLE_UPDATED=false" >> $GITHUB_ENV
               exit 0
             elif $BRANCH_EXISTS_REMOTELY; then
-              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
+              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
               echo "Forcing push to update remote branch..."
               # Force push the target commit to the remote branch ref
               if git push --force origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
-                echo "LATEST_UPDATED=true" >> $GITHUB_ENV
+                echo "STABLE_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to update remote branch 'origin/${{ env.LATEST_BRANCH }}'. Check permissions or branch protection rules."
-                echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+                echo "Error: Failed to update remote branch 'origin/${{ env.STABLE_BRANCH }}'. Check permissions or branch protection rules."
+                echo "STABLE_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
             else
-              echo "Remote branch 'origin/${{ env.LATEST_BRANCH }}' does not exist. Creating it..."
+              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' does not exist. Creating it..."
               # Push the target commit to create the new remote branch ref
               if git push origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
-                echo "LATEST_UPDATED=true" >> $GITHUB_ENV
+                echo "STABLE_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to create the new remote branch 'origin/${{ env.LATEST_BRANCH }}'. Check permissions."
-                echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+                echo "Error: Failed to create the new remote branch 'origin/${{ env.STABLE_BRANCH }}'. Check permissions."
+                echo "STABLE_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
             fi
 
           else
-            echo "Error: Tag ${{ env.LATEST_TAG }} commit could not be resolved after fetching from upstream."
-            echo "LATEST_UPDATED=false" >> $GITHUB_ENV
+            echo "Error: Tag ${{ env.LATEST_STABLE_TAG }} commit could not be resolved after fetching from upstream."
+            echo "STABLE_UPDATED=false" >> $GITHUB_ENV
             exit 1
           fi
 
       - name: Rebase enhance branches to stable release
-        if: env.LATEST_TAG != '' && env.LATEST_UPDATED == 'true'
+        if: env.LATEST_STABLE_TAG != '' && env.STABLE_UPDATED == 'true'
         run: |
-          TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_TAG }}^{commit}")
-          echo "Rebasing enhance branches to commit: $TARGET_COMMIT (branch: ${{ env.LATEST_BRANCH }})"
+          TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_STABLE_TAG }}^{commit}")
+          echo "Rebasing enhance branches to commit: $TARGET_COMMIT (branch: ${{ env.STABLE_BRANCH }})"
 
           # Initialize result variables
           echo "REBASE_FAILED=false" >> $GITHUB_ENV
@@ -220,9 +220,9 @@ jobs:
           fi
 
       - name: Create and merge to release branch
-        if: env.LATEST_TAG != '' && env.LATEST_UPDATED == 'true' && env.REBASE_FAILED == 'false'
+        if: env.LATEST_STABLE_TAG != '' && env.STABLE_UPDATED == 'true' && env.REBASE_FAILED == 'false'
         run: |
-          echo "Creating release branch '${{ env.RELEASE_BRANCH }}' based on '${{ env.LATEST_BRANCH }}'"
+          echo "Creating release branch '${{ env.RELEASE_BRANCH }}' based on '${{ env.STABLE_BRANCH }}'"
 
           # Check if release branch already exists on remote
           RELEASE_BRANCH_REF="refs/heads/${{ env.RELEASE_BRANCH }}"
@@ -254,9 +254,9 @@ jobs:
           git reset --hard 2>/dev/null || true
           git clean -fd 2>/dev/null || true
 
-          # Checkout the latest branch as the base for release branch
-          if git checkout "${{ env.LATEST_BRANCH }}"; then
-            echo "Checked out base branch '${{ env.LATEST_BRANCH }}'"
+          # Checkout the stable branch as the base for release branch
+          if git checkout "${{ env.STABLE_BRANCH }}"; then
+            echo "Checked out base branch '${{ env.STABLE_BRANCH }}'"
             # Create new release branch
             if git checkout -b "${{ env.RELEASE_BRANCH }}"; then
               echo "Created new release branch '${{ env.RELEASE_BRANCH }}'"
@@ -272,7 +272,7 @@ jobs:
               exit 1
             fi
           else
-            echo "Error: Failed to checkout base branch '${{ env.LATEST_BRANCH }}'"
+            echo "Error: Failed to checkout base branch '${{ env.STABLE_BRANCH }}'"
             exit 1
           fi
 
