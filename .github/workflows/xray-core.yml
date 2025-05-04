@@ -1,4 +1,4 @@
-name: Sync Upstream Xray-core
+name: Xray-core Automation Pipeline
 
 on:
   schedule:
