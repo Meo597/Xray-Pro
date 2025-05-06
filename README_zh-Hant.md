@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README_zh-Hans.md) | 繁体中文
 
-基於上游最新穩定版本的 Xray 增強版本，主要包含被上游拒絕的功能增強，同時偶爾也包括我們認為需要向前移植的修復和功能。
+基於上游最新穩定版本的 Xray 增強版本，主要包含被上游拒絕的功能增強，同時偶爾也包括我們認為需要向後移植的修復和功能。
 
 ## Fork 和貢獻的使用說明
 
@@ -21,7 +21,7 @@
 我們的 GitHub Workflows 旨在簡化追蹤上游變更和整合本地增強的過程：
 
 - **追蹤上游穩定版本**：工作流程會自動追蹤上游倉庫（例如 `XTLS/Xray-core`）的最新穩定版本。本地鏡像儲存在定義為 `STABLE_BRANCH` 的分支中。
-- **Rebase 增強分支**：本地增強分支，前綴為 `ENHANCE_BRANCH_PREFIX`（例如 `pro`），會被 rebase 到 `STABLE_BRANCH` 上，確保與上游基線保持同步。這些分支遵循嚴格的命名規範，使用年月序號前綴以強制合併順序並防止潛在衝突（例如 `Xray-core/pro/250588/feat-xxxxxxxx` 或 `Xray-core/pro/250588/fix-xxxxxxxxxxx`）。
+- **Rebase 增強分支**：本地增強分支，前綴為 `ENHANCE_BRANCH_PREFIX`（例如 `pro`），會被 rebase 到 `STABLE_BRANCH` 上，確保與上游基線保持同步。這些分支遵循嚴格的命名規範，使用年月序號前綴以強制合併順序並防止潛在衝突（例如 `Xray-core/pro/250588/feat-xxxxxxxx` 或 `Xray-core/pro/250588/bpfix-xxxxxxxxxxx`）。
 - **順序合併**：rebase 後，增強分支將根據年月序號前綴按順序合併到臨時的 `RELEASE_BRANCH` 中。此分支會保留，直到有新的增強分支添加或下一次上游更新發生。
 - **版本發佈**：合併完成後，基於 `RELEASE_BRANCH` 的內容發佈新的 `Xray-Pro` 版本。
 
