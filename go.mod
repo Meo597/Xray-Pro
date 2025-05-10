@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/v2fly/ss-bloomring v0.0.0-20210312155135-28617310f63e
 	github.com/vishvananda/netlink v1.3.0
-	github.com/xtls/reality v0.0.0-20250509234750-843f76afe439
+	github.com/xtls/reality v0.0.0-20250509233925-c6f1fd4fb420
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	golang.org/x/crypto v0.36.0
 	golang.org/x/net v0.37.0
@@ -34,8 +34,10 @@ require (
 	lukechampine.com/blake3 v1.4.0
 )
 
-// [TODO] Temp: use forked reality until upstream merges #12
-replace github.com/xtls/reality => github.com/meo597/reality v0.0.0-20250509234750-843f76afe439
+// Replace github.com/xtls/reality with a forked version from github.com/meo597/xray-pro.
+// This applies to the branch REALITY/pro/250502/bpfeat-REALITY-Add-rate-limiting-to-fallback-handling-via-token-bucket in this repository,
+// forked from an upstream stable commit, and incorporates PR#12 changes.
+replace github.com/xtls/reality => github.com/meo597/xray-pro v0.0.0-20250509233925-c6f1fd4fb420
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
