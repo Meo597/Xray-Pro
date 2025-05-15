@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  sync-upstream:
+  sync-and-release:
     runs-on: ubuntu-latest
 
     env:
@@ -21,27 +21,27 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Setup Git config
+      - name: Set up Git config
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Check upstream stable release
+      - name: Fetch upstream latest stable release tag name
         run: |
-          echo "Fetching latest stable release from ${{ env.UPSTREAM_REPO }}"
+          echo "Fetching latest stable release from ${{ env.UPSTREAM_REPO }}."
 
           # Fetch the latest stable release tag name
           latest_stable_tag=""
           for attempt in {1..3}; do
-            response=$(curl -s -w "%{http_code}" "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/tags?per_page=100")
+            response=$(curl -s -w "%{http_code}" -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/tags?per_page=100")
             http_code=$(echo "$response" | tail -n1)
             body=$(echo "$response" | head -n -1)
             if [ "$http_code" -eq 200 ]; then
               latest_stable_tag=$(echo "$body" | jq -r '.[] | .name | select(test("^v[0-9]+\\.[0-9]{6}\\.[0-9]+"))' | head -1)
               break
             else
-              echo "API request failed with status $http_code (attempt $attempt/3)"
-              if [ "$attempt" -eq 3 ]; then
+              echo "API request failed with status $http_code (attempt $attempt/3)."
+              if [ "$attempt" -ge 3 ]; then
                 echo "Error: Failed to fetch releases after 3 attempts. Check network or GitHub API limits."
                 echo "LATEST_STABLE_TAG=" >> $GITHUB_ENV
                 exit 1
@@ -56,10 +56,11 @@ jobs:
             exit 1
           fi
 
-          echo "Latest stable tag: $latest_stable_tag"
+          echo "Latest stable tag: $latest_stable_tag."
           echo "LATEST_STABLE_TAG=$latest_stable_tag" >> $GITHUB_ENV
+          exit 0
 
-      - name: Sync upstream stable release
+      - name: Check and sync stable branch
         if: env.LATEST_STABLE_TAG != ''
         run: |
           # Add upstream remote and fetch its tags
@@ -75,11 +76,11 @@ jobs:
           echo "Verifying target tag ${{ env.LATEST_STABLE_TAG }} locally..."
           if git rev-parse --verify "refs/tags/${{ env.LATEST_STABLE_TAG }}^{commit}" >/dev/null 2>&1; then
             TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_STABLE_TAG }}^{commit}")
-            echo "Target tag ${{ env.LATEST_STABLE_TAG }} points to commit: $TARGET_COMMIT"
+            echo "Target tag ${{ env.LATEST_STABLE_TAG }} points to commit: $TARGET_COMMIT."
 
             # Check if the branch exists on the *remote* (origin)
             REMOTE_BRANCH_REF="refs/heads/${{ env.STABLE_BRANCH }}"
-            echo "Checking remote branch existence: origin/${{ env.STABLE_BRANCH }}"
+            echo "Checking remote branch existence: origin/${{ env.STABLE_BRANCH }}."
             # Use git ls-remote to check the remote ref. Output format: <hash>\t<ref>
             REMOTE_COMMIT_INFO=$(git ls-remote origin $REMOTE_BRANCH_REF)
             if [ $? -ne 0 ]; then
@@ -94,36 +95,36 @@ jobs:
               # Extract hash from "<hash>\t<ref>" format
               CURRENT_REMOTE_COMMIT=$(echo "$REMOTE_COMMIT_INFO" | cut -f1)
               BRANCH_EXISTS_REMOTELY=true
-              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' exists and points to commit: $CURRENT_REMOTE_COMMIT"
+              echo "Remote branch origin/${{ env.STABLE_BRANCH }} exists and points to commit: $CURRENT_REMOTE_COMMIT."
             else
-              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' does not exist."
+              echo "Remote branch origin/${{ env.STABLE_BRANCH }} does not exist."
             fi
 
-            # Now, decide action based on remote existence and commit hash comparison
+            # Decide action based on remote existence and commit hash comparison
             if $BRANCH_EXISTS_REMOTELY && [ "$CURRENT_REMOTE_COMMIT" == "$TARGET_COMMIT" ]; then
-              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' is already synced with tag '${{ env.LATEST_STABLE_TAG }}'."
+              echo "Remote branch origin/${{ env.STABLE_BRANCH }} is already synced with tag ${{ env.LATEST_STABLE_TAG }}."
               echo "STABLE_UPDATED=false" >> $GITHUB_ENV
               exit 0
             elif $BRANCH_EXISTS_REMOTELY; then
-              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
+              echo "Remote branch origin/${{ env.STABLE_BRANCH }} needs update (Current: $CURRENT_REMOTE_COMMIT, Target: $TARGET_COMMIT)."
               echo "Forcing push to update remote branch..."
               # Force push the target commit to the remote branch ref
               if git push --force origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
                 echo "STABLE_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to update remote branch 'origin/${{ env.STABLE_BRANCH }}'. Check permissions or branch protection rules."
+                echo "Error: Failed to update remote branch origin/${{ env.STABLE_BRANCH }}. Check permissions or branch protection rules."
                 echo "STABLE_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
             else
-              echo "Remote branch 'origin/${{ env.STABLE_BRANCH }}' does not exist. Creating it..."
+              echo "Remote branch origin/${{ env.STABLE_BRANCH }} does not exist. Creating it..."
               # Push the target commit to create the new remote branch ref
               if git push origin "$TARGET_COMMIT:$REMOTE_BRANCH_REF"; then
                 echo "STABLE_UPDATED=true" >> $GITHUB_ENV
                 exit 0
               else
-                echo "Error: Failed to create the new remote branch 'origin/${{ env.STABLE_BRANCH }}'. Check permissions."
+                echo "Error: Failed to create the new remote branch origin/${{ env.STABLE_BRANCH }}. Check permissions."
                 echo "STABLE_UPDATED=false" >> $GITHUB_ENV
                 exit 1
               fi
@@ -135,15 +136,11 @@ jobs:
             exit 1
           fi
 
-      - name: Rebase enhance branches to stable release
+      - name: Rebase enhance branches
         if: env.LATEST_STABLE_TAG != '' && env.STABLE_UPDATED == 'true'
         run: |
           TARGET_COMMIT=$(git rev-parse "refs/tags/${{ env.LATEST_STABLE_TAG }}^{commit}")
-          echo "Rebasing enhance branches to commit: $TARGET_COMMIT (branch: ${{ env.STABLE_BRANCH }})"
-
-          # Initialize result variables
-          echo "REBASE_FAILED=false" >> $GITHUB_ENV
-          FAILED_BRANCHES=""
+          echo "Rebasing enhance branches to commit: $TARGET_COMMIT (branch: ${{ env.STABLE_BRANCH }})."
 
           # Fetch all remote branches from origin
           if ! git fetch origin --quiet; then
@@ -155,16 +152,17 @@ jobs:
           # List all remote branches starting with ENHANCE_BRANCH_PREFIX
           ENHANCE_BRANCHES=$(git branch -r | grep "origin/${{ env.ENHANCE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
           if [ -z "$ENHANCE_BRANCHES" ]; then
-            echo "No enhance branches starting with '${{ env.ENHANCE_BRANCH_PREFIX }}' found."
-            echo "REBASE_FAILED=true" >> $GITHUB_ENV
+            echo "No enhance branches starting with ${{ env.ENHANCE_BRANCH_PREFIX }} found."
+            echo "REBASE_FAILED=false" >> $GITHUB_ENV
             exit 0
           fi
 
-          echo "Found enhance branches: $ENHANCE_BRANCHES"
+          echo "Found enhance branches:\n$ENHANCE_BRANCHES."
 
           # Loop through each enhance branch and rebase it to TARGET_COMMIT
+          FAILED_BRANCHES=""
           for branch in $ENHANCE_BRANCHES; do
-            echo "Processing branch: $branch"
+            echo "Processing branch: $branch."
 
             # Clean up any uncommitted changes before switching or rebasing
             git reset --hard 2>/dev/null || true
@@ -174,78 +172,97 @@ jobs:
             if git checkout "$branch"; then
               # Rebase the branch onto TARGET_COMMIT
               if git rebase "$TARGET_COMMIT"; then
-                echo "Successfully rebased $branch onto $TARGET_COMMIT"
+                echo "Successfully rebased $branch onto $TARGET_COMMIT."
                 # Force push the rebased branch to remote
                 if git push --force origin "$branch"; then
-                  echo "Successfully pushed rebased branch $branch to remote"
+                  echo "Successfully pushed rebased branch $branch to remote."
                 else
                   echo "Error: Failed to push rebased branch $branch to remote. Check permissions or branch protection rules."
                   FAILED_BRANCHES="$FAILED_BRANCHES $branch (push failed)"
-                  echo "REBASE_FAILED=true" >> $GITHUB_ENV
                 fi
               else
                 echo "Rebase failed for $branch. Creating an issue for manual intervention."
                 git rebase --abort
                 FAILED_BRANCHES="$FAILED_BRANCHES $branch (rebase conflict)"
-                echo "REBASE_FAILED=true" >> $GITHUB_ENV
-                # Create an issue for conflict resolution
-                ISSUE_TITLE="Rebase Conflict for branch $branch"
-                ISSUE_BODY="Rebase of branch $branch onto commit $TARGET_COMMIT failed due to conflicts. Please resolve manually.\n\n- Branch: $branch\n- Target Commit: $TARGET_COMMIT\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                if curl -X POST \
-                  -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-                  -H "Accept: application/vnd.github.v3+json" \
-                  -d "{\"title\": \"$ISSUE_TITLE\", \"body\": \"$ISSUE_BODY\"}" \
-                  "https://api.github.com/repos/${{ github.repository }}/issues"; then
-                  echo "Successfully created issue for rebase conflict of branch $branch"
-                else
-                  echo "Error: Failed to create issue for rebase conflict of branch $branch. Check token permissions or API limits."
-                fi
               fi
             else
-              echo "Error: Failed to checkout $branch"
+              echo "Error: Failed to checkout $branch."
               FAILED_BRANCHES="$FAILED_BRANCHES $branch (checkout failed)"
-              echo "REBASE_FAILED=true" >> $GITHUB_ENV
             fi
           done
 
           # Summary of failed branches
           if [ -n "$FAILED_BRANCHES" ]; then
-            echo "Rebase process completed with failures for the following branches:$FAILED_BRANCHES"
-            echo "Finished rebasing all enhance branches."
+            echo "Rebase process completed with failures for the following branches:$FAILED_BRANCHES."
+
+            # Create an issue for conflict resolution
+            ISSUE_TITLE="Rebase Failures for Enhance Branches on ${{ env.LATEST_STABLE_TAG }}"
+            ISSUE_BODY="The following branches failed to rebase onto commit \`${TARGET_COMMIT}\` (tag: \`${{ env.LATEST_STABLE_TAG }}\`):\n\n"
+            ISSUE_BODY="$ISSUE_BODY| Branch | Failure Reason |\n"
+            ISSUE_BODY="$ISSUE_BODY|--------|----------------|\n"
+            echo "$FAILED_BRANCHES" | tr ' ' '\n' | while read -r failed; do
+              if [ -n "$failed" ]; then
+                BRANCH_NAME=$(echo "$failed" | cut -d'(' -f1 | xargs | sed 's/|/\\|/g')
+                REASON=$(echo "$failed" | grep -oP '(?<=\().*(?=\))')
+                ISSUE_BODY="$ISSUE_BODY| \`$BRANCH_NAME\` | $REASON |\n"
+              fi
+            done
+            ISSUE_BODY="$ISSUE_BODY\nWorkflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            ISSUE_BODY="$ISSUE_BODY\nPlease manually resolve the conflicts or address the issues for these branches."
+            ISSUE_JSON=$(jq -n --arg title "$ISSUE_TITLE" --arg body "$ISSUE_BODY" '{title: $title, body: $body}')
+
+            response=$(curl -s -w "%{http_code}" -X POST \
+              -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "$ISSUE_JSON" \
+              "https://api.github.com/repos/${{ github.repository }}/issues")
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | head -n -1)
+            if [ "$http_code" -eq 201 ]; then
+              echo "Successfully created issue for rebase conflict."
+            else
+              echo "Error: Failed to create issue for rebase conflict. HTTP Status: $http_code."
+              echo "Response Body: $body."
+            fi
+
+            echo "REBASE_FAILED=true" >> $GITHUB_ENV
             exit 1
           else
             echo "Rebase process completed successfully for all branches."
             echo "Finished rebasing all enhance branches."
+            echo "REBASE_FAILED=false" >> $GITHUB_ENV
             exit 0
           fi
 
-      - name: Create and merge to release branch
-        if: env.LATEST_STABLE_TAG != '' && env.STABLE_UPDATED == 'true' && env.REBASE_FAILED == 'false'
+      - name: Build release branch
+        if: env.REBASE_FAILED == 'false'
         run: |
-          echo "Creating release branch '${{ env.RELEASE_BRANCH }}' based on '${{ env.STABLE_BRANCH }}'"
+          echo "Creating release branch ${{ env.RELEASE_BRANCH }} based on ${{ env.STABLE_BRANCH }}."
 
           # Check if release branch already exists on remote
           RELEASE_BRANCH_REF="refs/heads/${{ env.RELEASE_BRANCH }}"
-          echo "Checking if release branch '${{ env.RELEASE_BRANCH }}' exists on remote..."
+          echo "Checking if release branch ${{ env.RELEASE_BRANCH }} exists on remote..."
           RELEASE_BRANCH_EXISTS=$(git ls-remote origin $RELEASE_BRANCH_REF)
           if [ $? -ne 0 ]; then
             echo "Error: Failed to check remote branch with git ls-remote. Check network or permissions."
+            echo "MERGE_FAILED=true" >> $GITHUB_ENV
             exit 1
           fi
 
           if [ -n "$RELEASE_BRANCH_EXISTS" ]; then
-            echo "Release branch '${{ env.RELEASE_BRANCH }}' already exists on remote. Deleting it..."
+            echo "Release branch ${{ env.RELEASE_BRANCH }} already exists on remote. Deleting it..."
             # Delete remote branch
             if git push origin --delete "${{ env.RELEASE_BRANCH }}"; then
-              echo "Successfully deleted remote branch '${{ env.RELEASE_BRANCH }}'"
+              echo "Successfully deleted remote branch ${{ env.RELEASE_BRANCH }}."
               # Prune local references to deleted remote branches
               if git fetch origin --prune --quiet; then
-                echo "Pruned local references to deleted remote branches"
+                echo "Pruned local references to deleted remote branches."
               else
-                echo "Error: Failed to prune local references. Continuing anyway."
+                echo "Warn: Failed to prune local references."
               fi
             else
-              echo "Error: Failed to delete remote branch '${{ env.RELEASE_BRANCH }}'. Check permissions or branch protection rules."
+              echo "Error: Failed to delete remote branch ${{ env.RELEASE_BRANCH }}. Check permissions or branch protection rules."
+              echo "MERGE_FAILED=true" >> $GITHUB_ENV
               exit 1
             fi
           fi
@@ -254,76 +271,85 @@ jobs:
           git reset --hard 2>/dev/null || true
           git clean -fd 2>/dev/null || true
 
-          # Checkout the stable branch as the base for release branch
-          if git checkout "${{ env.STABLE_BRANCH }}"; then
-            echo "Checked out base branch '${{ env.STABLE_BRANCH }}'"
-            # Create new release branch
-            if git checkout -b "${{ env.RELEASE_BRANCH }}"; then
-              echo "Created new release branch '${{ env.RELEASE_BRANCH }}'"
-              # Push the new release branch to remote
-              if git push origin "${{ env.RELEASE_BRANCH }}"; then
-                echo "Successfully pushed release branch '${{ env.RELEASE_BRANCH }}' to remote"
-              else
-                echo "Error: Failed to push release branch '${{ env.RELEASE_BRANCH }}' to remote. Check permissions."
-                exit 1
-              fi
-            else
-              echo "Error: Failed to create release branch '${{ env.RELEASE_BRANCH }}'"
-              exit 1
-            fi
-          else
-            echo "Error: Failed to checkout base branch '${{ env.STABLE_BRANCH }}'"
+          # Create a new release branch based on stable branch
+          echo "Creating release branch ${{ env.RELEASE_BRANCH }} based on ${{ env.STABLE_BRANCH }}..."
+          if ! git checkout -b "${{ env.RELEASE_BRANCH }}" "origin/${{ env.STABLE_BRANCH }}"; then
+            echo "Error: Failed to create and checkout release branch ${{ env.RELEASE_BRANCH }} from ${{ env.STABLE_BRANCH }}."
+            echo "MERGE_FAILED=true" >> $GITHUB_ENV
             exit 1
           fi
+          echo "Successfully created and checked out release branch ${{ env.RELEASE_BRANCH }}."
 
           # Fetch all enhance branches to merge
           ENHANCE_BRANCHES=$(git branch -r | grep "origin/${{ env.ENHANCE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
           if [ -z "$ENHANCE_BRANCHES" ]; then
-            echo "No enhance branches starting with '${{ env.ENHANCE_BRANCH_PREFIX }}' found to merge."
+            echo "No enhance branches starting with ${{ env.ENHANCE_BRANCH_PREFIX }} found to merge."
+            echo "MERGE_FAILED=false" >> $GITHUB_ENV
             exit 0
           fi
 
-          echo "Merging enhance branches into release branch: $ENHANCE_BRANCHES"
-          MERGE_FAILED=false
-          FAILED_MERGES=""
+          echo "Merging enhance branches into release branch:\n$ENHANCE_BRANCHES."
 
           # Loop through each enhance branch and merge it into release branch
+          FAILED_BRANCHES=""
           for branch in $ENHANCE_BRANCHES; do
-            echo "Merging branch: $branch"
+            echo "Merging branch: $branch."
             if git merge --no-ff --no-edit "origin/$branch"; then
-              echo "Successfully merged branch $branch into '${{ env.RELEASE_BRANCH }}'"
+              echo "Successfully merged branch $branch into ${{ env.RELEASE_BRANCH }}."
             else
-              echo "Error: Failed to merge branch $branch into '${{ env.RELEASE_BRANCH }}'. Creating an issue for manual intervention."
-              MERGE_FAILED=true
-              FAILED_MERGES="$FAILED_MERGES $branch"
-              # Create an issue for merge conflict
-              ISSUE_TITLE="Merge Conflict for branch $branch into ${{ env.RELEASE_BRANCH }}"
-              ISSUE_BODY="Merge of branch $branch into ${{ env.RELEASE_BRANCH }} failed due to conflicts. Please resolve manually.\n\n- Enhance Branch: $branch\n- Release Branch: ${{ env.RELEASE_BRANCH }}\n- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              if curl -X POST \
-                -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                -d "{\"title\": \"$ISSUE_TITLE\", \"body\": \"$ISSUE_BODY\"}" \
-                "https://api.github.com/repos/${{ github.repository }}/issues"; then
-                echo "Successfully created issue for merge conflict of branch $branch"
-              else
-                echo "Error: Failed to create issue for merge conflict of branch $branch. Check token permissions or API limits."
-              fi
+              echo "Error: Failed to merge branch $branch into ${{ env.RELEASE_BRANCH }}."
+              FAILED_BRANCHES="$FAILED_BRANCHES $branch (merge conflict)"
               # Abort the merge to clean up conflict state
               git merge --abort 2>/dev/null || true
             fi
           done
 
-          # If merges were performed, push the updated release branch
-          if ! $MERGE_FAILED; then
-            if git push origin "${{ env.RELEASE_BRANCH }}"; then
-              echo "Successfully pushed updated release branch '${{ env.RELEASE_BRANCH }}' with merged enhances"
+          # Summary of failed branches
+          if [ -n "$FAILED_BRANCHES" ]; then
+            echo "Merge process completed with failures for the following branches:$FAILED_BRANCHES."
+
+            # Create an issue for merge conflict
+            ISSUE_TITLE="Merge Failures for Enhance Branches into ${{ env.RELEASE_BRANCH }}"
+            ISSUE_BODY="The following branches failed to merge into \`${{ env.RELEASE_BRANCH }}\` based on \`${{ env.STABLE_BRANCH }}\`:\n\n"
+            ISSUE_BODY="$ISSUE_BODY| Branch | Failure Reason |\n"
+            ISSUE_BODY="$ISSUE_BODY|--------|----------------|\n"
+            echo "$FAILED_BRANCHES" | tr ' ' '\n' | while read -r failed; do
+              if [ -n "$failed" ]; then
+                BRANCH_NAME=$(echo "$failed" | cut -d'(' -f1 | xargs | sed 's/|/\\|/g')
+                REASON=$(echo "$failed" | grep -oP '(?<=\().*(?=\))')
+                ISSUE_BODY="$ISSUE_BODY| \`$BRANCH_NAME\` | $REASON |\n"
+              fi
+            done
+            ISSUE_BODY="$ISSUE_BODY\nWorkflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            ISSUE_BODY="$ISSUE_BODY\nPlease manually resolve the conflicts or address the issues for these branches."
+            ISSUE_JSON=$(jq -n --arg title "$ISSUE_TITLE" --arg body "$ISSUE_BODY" '{title: $title, body: $body}')
+
+            response=$(curl -s -w "%{http_code}" -X POST \
+              -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "$ISSUE_JSON" \
+              "https://api.github.com/repos/${{ github.repository }}/issues")
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | head -n -1)
+            if [ "$http_code" -eq 201 ]; then
+              echo "Successfully created issue for merge conflict."
             else
-              echo "Error: Failed to push updated release branch '${{ env.RELEASE_BRANCH }}'. Check permissions."
+              echo "Error: Failed to create issue for merge conflict. HTTP Status: $http_code."
+              echo "Response Body: $body."
+            fi
+
+            echo "MERGE_FAILED=true" >> $GITHUB_ENV
+            exit 1
+          else
+            # If merges were performed, push release branch
+            if git push origin "${{ env.RELEASE_BRANCH }}"; then
+              echo "Successfully pushed release branch ${{ env.RELEASE_BRANCH }} with merged enhances."
+              echo "Finished creating and merging to release branch."
+              echo "MERGE_FAILED=false" >> $GITHUB_ENV
+              exit 0
+            else
+              echo "Error: Failed to push release branch ${{ env.RELEASE_BRANCH }}. Check permissions."
+              echo "MERGE_FAILED=true" >> $GITHUB_ENV
               exit 1
             fi
-          else
-            echo "Merge process completed with failures for the following branches:$FAILED_MERGES"
-            exit 1
           fi
-
-          echo "Finished creating and merging to release branch."
