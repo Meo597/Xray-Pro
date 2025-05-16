@@ -4,6 +4,16 @@ English | [简体中文](README_zh-Hans.md) | [繁体中文](README_zh-Hant.md)
 
 An enhanced version of Xray based on the latest stable upstream release, primarily featuring enhancements rejected by upstream, while occasionally including backporting fixes and features as needed.
 
+## End-User Usage Guide
+
+If you are an end-user looking to download or use `Xray-Pro`, here are the relevant resources:
+
+- **Download Releases**: Visit [GitHub Releases](https://github.com/Meo597/Xray-Pro/releases) to get the latest version.
+- **Docker Image**: Pull the image `ghcr.io/meo597/xray-pro`.
+- **Linux Installation Script**: Check the [Installation Guide](https://github.com/Meo597/Xray-Pro/blob/Xray-install/release/README.md).
+
+If you encounter any issues, please submit feedback via GitHub Issues.
+
 ## Usage Instructions for Forking and Contributing
 
 If you are interested in forking or contributing to `Xray-Pro`, the following instructions outline our automated workflow and branching strategy to help you understand and adapt the project.

@@ -4,6 +4,16 @@
 
 基於上游最新穩定版本的 Xray 增強版本，主要包含被上游拒絕的功能增強，同時偶爾也包括我們認為需要向後移植的修復和功能。
 
+## 最終用戶使用說明
+
+如果您是最終用戶，希望下載或使用 `Xray 增強版`，以下是相關資源：
+
+- **下載發佈版本**：訪問 [GitHub Releases](https://github.com/Meo597/Xray-Pro/releases) 獲取最新版本。
+- **Docker 鏡像**：拉取鏡像 `ghcr.io/meo597/xray-pro`。
+- **Linux 安裝腳本**：查看 [安裝指南](https://github.com/Meo597/Xray-Pro/blob/Xray-install/release/README_zh-Hant.md)。
+
+如有問題，請在 GitHub Issues 中提交反饋。
+
 ## Fork 和貢獻的使用說明
 
 如果您有興趣 fork 或為 `Xray-Pro` 做出貢獻，以下說明概述了我們的自動化工作流程和分支策略，幫助您理解和適應此項目。
