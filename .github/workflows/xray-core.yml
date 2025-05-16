@@ -21,7 +21,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Set up Git config
+      - name: Set up git config
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -209,7 +209,7 @@ jobs:
             done
             ISSUE_BODY="$ISSUE_BODY\nWorkflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             ISSUE_BODY="$ISSUE_BODY\nPlease manually resolve the conflicts or address the issues for these branches."
-            ISSUE_JSON=$(jq -n --arg title "$ISSUE_TITLE" --arg body "$ISSUE_BODY" '{title: $title, body: $body}')
+            ISSUE_JSON=$(jq -n --arg title "$ISSUE_TITLE" --arg body "$ISSUE_BODY" '{title: $title, body: ($body | gsub("\\\\n"; "\n"))}')
 
             response=$(curl -s -w "%{http_code}" -X POST \
               -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
@@ -322,7 +322,7 @@ jobs:
             done
             ISSUE_BODY="$ISSUE_BODY\nWorkflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             ISSUE_BODY="$ISSUE_BODY\nPlease manually resolve the conflicts or address the issues for these branches."
-            ISSUE_JSON=$(jq -n --arg title "$ISSUE_TITLE" --arg body "$ISSUE_BODY" '{title: $title, body: $body}')
+            ISSUE_JSON=$(jq -n --arg title "$ISSUE_TITLE" --arg body "$ISSUE_BODY" '{title: $title, body: ($body | gsub("\\\\n"; "\n"))}')
 
             response=$(curl -s -w "%{http_code}" -X POST \
               -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
@@ -352,4 +352,95 @@ jobs:
               echo "MERGE_FAILED=true" >> $GITHUB_ENV
               exit 1
             fi
+          fi
+
+      - name: Create github release
+        if: env.LATEST_STABLE_TAG != '' && env.MERGE_FAILED == 'false'
+        run: |
+          echo "Creating a GitHub Release for tag ${{ env.LATEST_STABLE_TAG }} on branch ${{ env.RELEASE_BRANCH }}."
+
+          # Check if a release already exists for the tag
+          RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | \
+            jq -r ".[] | select(.tag_name == \"${{ env.LATEST_STABLE_TAG }}\") | {id: .id, tag_name: .tag_name}")
+          RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r ".id")
+
+          if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
+            echo "Release for tag ${{ env.LATEST_STABLE_TAG }} already exists (ID: $RELEASE_ID). Deleting it..."
+            # Delete the existing release
+            response=$(curl -s -w "%{http_code}" -X DELETE \
+              -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID")
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | head -n -1)
+
+            if [ "$http_code" -eq 204 ]; then
+              echo "Successfully deleted existing Release for tag ${{ env.LATEST_STABLE_TAG }} (ID: $RELEASE_ID)."
+            else
+              echo "Error: Failed to delete existing Release. HTTP Status: $http_code."
+              echo "Response Body: $body."
+              exit 1
+            fi
+          fi
+
+          # Check if the tag already exists in the repository
+          TAG_EXISTS=$(git ls-remote origin "refs/tags/${{ env.LATEST_STABLE_TAG }}" | wc -l)
+          if [ "$TAG_EXISTS" -gt 0 ]; then
+            echo "Tag ${{ env.LATEST_STABLE_TAG }} already exists in the repository. Deleting it..."
+            if git push origin --delete "refs/tags/${{ env.LATEST_STABLE_TAG }}"; then
+              echo "Successfully deleted existing tag ${{ env.LATEST_STABLE_TAG }} from remote."
+            else
+              echo "Error: Failed to delete existing tag ${{ env.LATEST_STABLE_TAG }}. Check permissions or branch protection rules."
+              exit 1
+            fi
+          fi
+
+          # Fetch all enhance branches that were merged into RELEASE_BRANCH
+          ENHANCE_BRANCHES=$(git branch -r | grep "origin/${{ env.ENHANCE_BRANCH_PREFIX }}" | sed 's|origin/||' | sort -V)
+          if [ -z "$ENHANCE_BRANCHES" ]; then
+            echo "No enhance branches starting with ${{ env.ENHANCE_BRANCH_PREFIX }} found to include in release notes."
+            ENHANCE_LIST="No enhancement branches were merged."
+          else
+            echo "Found enhance branches to include in release notes:\n$ENHANCE_BRANCHES"
+            ENHANCE_LIST="**Merged Enhancement Branches:**\n"
+            for branch in $ENHANCE_BRANCHES; do
+              ENHANCE_LIST="$ENHANCE_LIST- $branch\n"
+            done
+          fi
+
+          # Prepare release notes
+          RELEASE_NOTES="Automated release based on upstream repository ${{ env.UPSTREAM_REPO }} with tag ${{ env.LATEST_STABLE_TAG }}.\n\n"
+          RELEASE_NOTES="$RELEASE_NOTES$ENHANCE_LIST\n\n"
+          RELEASE_NOTES="$RELEASE_NOTES**Workflow Information:**\n"
+          RELEASE_NOTES="$RELEASE_NOTES- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # Create the release payload
+          RELEASE_DATA=$(jq -n \
+            --arg tag_name "${{ env.LATEST_STABLE_TAG }}" \
+            --arg target_commitish "refs/heads/${{ env.RELEASE_BRANCH }}" \
+            --arg name "Xray-core Pro ${{ env.LATEST_STABLE_TAG }}" \
+            --arg body "$RELEASE_NOTES" \
+            --arg draft "false" \
+            --arg prerelease "false" \
+            '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name, body: ($body | gsub("\\\\n"; "\n")), draft: $draft | test("true"), prerelease: $prerelease | test("true")}')
+
+          # Create the release using GitHub API
+          response=$(curl -s -w "%{http_code}" -X POST \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "$RELEASE_DATA" \
+            "https://api.github.com/repos/${{ github.repository }}/releases")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+
+          if [ "$http_code" -eq 201 ]; then
+            echo "Successfully created GitHub Release for tag ${{ env.LATEST_STABLE_TAG }}."
+            NEW_RELEASE_ID=$(echo "$body" | jq -r '.id')
+            echo "Release ID: $NEW_RELEASE_ID."
+            exit 0
+          else
+            echo "Error: Failed to create GitHub Release. HTTP Status: $http_code."
+            echo "Response Body: $body."
+            exit 1
           fi
