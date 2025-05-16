@@ -7,7 +7,7 @@
 # https://github.com/XTLS/Xray-install
 
 # The URL of the script is:
-# https://github.com/XTLS/Xray-install/raw/main/install-release.sh
+# https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh
 
 # If the script executes incorrectly, go to:
 # https://github.com/XTLS/Xray-install/issues
