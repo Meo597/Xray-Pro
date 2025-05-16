@@ -93,4 +93,4 @@ bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/i
 
 ## Stargazers over time
 
-[![Stargazers over time](https://starchart.cc/XTLS/Xray-install.svg)](https://starchart.cc/XTLS/Xray-install)
+[![Stargazers over time](https://starchart.cc/Meo597/Xray-Pro.svg)](https://starchart.cc/Meo597/Xray-Pro)
