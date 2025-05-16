@@ -94,4 +94,4 @@ bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/i
 
 ## 星标趋势图
 
-[![星标趋势图](https://starchart.cc/XTLS/Xray-install.svg)](https://starchart.cc/XTLS/Xray-install)
+[![星标趋势图](https://starchart.cc/Meo597/Xray-Pro.svg)](https://starchart.cc/Meo597/Xray-Pro)
