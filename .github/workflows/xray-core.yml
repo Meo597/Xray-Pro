@@ -157,7 +157,8 @@ jobs:
             exit 0
           fi
 
-          echo "Found enhance branches:\n$ENHANCE_BRANCHES."
+          echo "Found enhance branches:"
+          echo "$ENHANCE_BRANCHES"
 
           # Loop through each enhance branch and rebase it to TARGET_COMMIT
           FAILED_BRANCHES=""
@@ -288,7 +289,8 @@ jobs:
             exit 0
           fi
 
-          echo "Merging enhance branches into release branch:\n$ENHANCE_BRANCHES."
+          echo "Merging enhance branches into release branch:"
+          echo "$ENHANCE_BRANCHES"
 
           # Loop through each enhance branch and merge it into release branch
           FAILED_BRANCHES=""
@@ -402,7 +404,8 @@ jobs:
             echo "No enhance branches starting with ${{ env.ENHANCE_BRANCH_PREFIX }} found to include in release notes."
             ENHANCE_LIST="No enhancement branches were merged."
           else
-            echo "Found enhance branches to include in release notes:\n$ENHANCE_BRANCHES"
+            echo "Found enhance branches to include in release notes:"
+            echo "$ENHANCE_BRANCHES"
             ENHANCE_LIST="**Merged Enhancement Branches:**\n"
             for branch in $ENHANCE_BRANCHES; do
               ENHANCE_LIST="$ENHANCE_LIST- $branch\n"
