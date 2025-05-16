@@ -215,7 +215,7 @@ main() {
 
     TMP_DIRECTORY="$(mktemp -d)/"
     ZIP_FILE="${TMP_DIRECTORY}Xray-linux-$MACHINE.zip"
-    DOWNLOAD_LINK="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-$MACHINE.zip"
+    DOWNLOAD_LINK="https://github.com/Meo597/Xray-Pro/releases/latest/download/Xray-linux-$MACHINE.zip"
 
     download_xray
     verification_xray
