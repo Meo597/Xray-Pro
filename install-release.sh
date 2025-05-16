@@ -4,13 +4,13 @@
 # https://wiki.linuxfoundation.org/lsb/fhs
 
 # The URL of the script project is:
-# https://github.com/XTLS/Xray-install
+# https://github.com/Meo597/Xray-Pro
 
 # The URL of the script is:
 # https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh
 
 # If the script executes incorrectly, go to:
-# https://github.com/XTLS/Xray-install/issues
+# https://github.com/Meo597/Xray-Pro/issues
 
 # You can set this variable whatever you want in shell session right before running this script by issuing:
 # export DAT_PATH='/usr/local/share/xray'
@@ -388,7 +388,7 @@ get_latest_version() {
       echo "error: github API rate limit exceeded"
     else
       echo "error: Failed to get the latest release version."
-      echo "Welcome bug report:https://github.com/XTLS/Xray-install/issues"
+      echo "Welcome bug report:https://github.com/Meo597/Xray-Pro/issues"
     fi
     "rm" "$tmp_file"
     exit 1
@@ -410,7 +410,7 @@ get_latest_version() {
       echo "error: github API rate limit exceeded"
     else
       echo "error: Failed to get the latest release version."
-      echo "Welcome bug report:https://github.com/XTLS/Xray-install/issues"
+      echo "Welcome bug report:https://github.com/Meo597/Xray-Pro/issues"
     fi
     "rm" "$tmp_file"
     exit 1
