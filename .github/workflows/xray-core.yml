@@ -385,6 +385,8 @@ jobs:
 
             if [ "$http_code" -eq 204 ]; then
               echo "Successfully deleted existing Release for tag ${{ env.LATEST_STABLE_TAG }} (ID: $RELEASE_ID)."
+              echo "Waiting 60 seconds for GitHub to process release deletion..."
+              sleep 60
             else
               echo "Error: Failed to delete existing Release. HTTP Status: $http_code."
               echo "Response Body: $body."
@@ -398,6 +400,8 @@ jobs:
             echo "Tag ${{ env.LATEST_STABLE_TAG }} already exists in the repository. Deleting it..."
             if git push origin --delete "refs/tags/${{ env.LATEST_STABLE_TAG }}"; then
               echo "Successfully deleted existing tag ${{ env.LATEST_STABLE_TAG }} from remote."
+              echo "Waiting 60 seconds for GitHub to process tag deletion..."
+              sleep 60
             else
               echo "Error: Failed to delete existing tag ${{ env.LATEST_STABLE_TAG }}. Check permissions or branch protection rules."
               exit 1
