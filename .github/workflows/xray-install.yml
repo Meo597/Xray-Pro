@@ -57,7 +57,13 @@ jobs:
           fi
 
           echo "Latest commit id: $latest_commit_id."
-          echo "LATEST_COMMIT_ID=$latest_commit_id" >> $GITHUB_ENV
+          # Check if XRAY_INSTALL_LATEST_COMMIT_ID is defined in repository variables
+          if [ -n "${{ vars.XRAY_INSTALL_LATEST_COMMIT_ID }}" ] && [ "${{ vars.XRAY_INSTALL_LATEST_COMMIT_ID }}" != "$latest_commit_id" ]; then
+            echo "Warn: XRAY_INSTALL_LATEST_COMMIT_ID is locked to ${{ vars.XRAY_INSTALL_LATEST_COMMIT_ID }} in repository variables, overriding fetched value ($latest_commit_id)."
+            echo "LATEST_COMMIT_ID=${{ vars.XRAY_INSTALL_LATEST_COMMIT_ID }}" >> $GITHUB_ENV
+          else
+            echo "LATEST_COMMIT_ID=$latest_commit_id" >> $GITHUB_ENV
+          fi
           exit 0
 
       - name: Check and sync latest branch
