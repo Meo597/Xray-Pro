@@ -18,7 +18,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/xray-core
+          images: ghcr.io/${{ github.repository_owner }}/xray-pro
           flavor: latest=auto
           tags: |
             type=sha
@@ -29,7 +29,7 @@ jobs:
         id: loyalsoldier
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/xray-core
+          images: ghcr.io/${{ github.repository_owner }}/xray-pro
           flavor: |
             latest=auto
             suffix=-ls,onlatest=true
