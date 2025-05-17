@@ -21,7 +21,7 @@ type Server interface {
 	// Name of the Client.
 	Name() string
 	// QueryIP sends IP queries to its configured server.
-	QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption, disableCache bool) ([]net.IP, error)
+	QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption, disableCache bool) ([]net.IP, uint32, error)
 }
 
 // Client is the interface for DNS client.
@@ -32,7 +32,8 @@ type Client struct {
 	domains            []string
 	expectIPs          []*router.GeoIPMatcher
 	allowUnexpectedIPs bool
-	tag        string
+	tag                string
+	timeoutMs          time.Duration
 }
 
 var errExpectedIPNonMatch = errors.New("expectIPs not match")
@@ -164,6 +165,13 @@ func NewClient(
 			}
 		}
 
+		var timeoutMs time.Duration
+		if ns.TimeoutMs > 0 {
+			timeoutMs = time.Duration(ns.TimeoutMs) * time.Millisecond
+		} else {
+			timeoutMs = 4000 * time.Millisecond
+		}
+
 		client.server = server
 		client.clientIP = clientIP
 		client.skipFallback = ns.SkipFallback
@@ -171,6 +179,7 @@ func NewClient(
 		client.expectIPs = matchers
 		client.allowUnexpectedIPs = ns.AllowUnexpectedIPs
 		client.tag = ns.Tag
+		client.timeoutMs = timeoutMs
 		return nil
 	})
 	return client, err
@@ -182,8 +191,8 @@ func (c *Client) Name() string {
 }
 
 // QueryIP sends DNS query to the name server with the client's IP.
-func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption, disableCache bool) ([]net.IP, error) {
-	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
+func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption, disableCache bool) ([]net.IP, uint32, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeoutMs)
 	if len(c.tag) != 0 {
 		content := session.InboundFromContext(ctx)
 		errors.LogDebug(ctx, "DNS: client override tag from ", content.Tag, " to ", c.tag)
@@ -191,13 +200,14 @@ func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption
 		// do not direct set *content.Tag, it might be used by other clients
 		ctx = session.ContextWithInbound(ctx, &session.Inbound{Tag: c.tag})
 	}
-	ips, err := c.server.QueryIP(ctx, domain, c.clientIP, option, disableCache)
+	ips, ttl, err := c.server.QueryIP(ctx, domain, c.clientIP, option, disableCache)
 	cancel()
 
 	if err != nil {
-		return ips, err
+		return ips, ttl, err
 	}
-	return c.MatchExpectedIPs(domain, ips)
+	netips, err := c.MatchExpectedIPs(domain, ips)
+	return netips, ttl, err
 }
 
 // MatchExpectedIPs matches queried domain IPs with expected IPs and returns matched ones.
