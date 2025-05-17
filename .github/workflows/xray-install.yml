@@ -143,7 +143,7 @@ jobs:
           fi
 
       - name: Rebase enhance branches
-        if: env.LATEST_COMMIT_ID != '' && env.LATEST_UPDATED == 'true'
+        if: env.LATEST_COMMIT_ID != '' && (env.LATEST_UPDATED == 'true' || github.event_name == 'workflow_dispatch')
         run: |
           TARGET_COMMIT=$(git rev-parse "${{ env.LATEST_COMMIT_ID }}^{commit}")
           echo "Rebasing enhance branches to commit: $TARGET_COMMIT (branch: ${{ env.LATEST_BRANCH }})."
