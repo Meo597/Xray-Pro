@@ -57,7 +57,13 @@ jobs:
           fi
 
           echo "Latest stable tag: $latest_stable_tag."
-          echo "LATEST_STABLE_TAG=$latest_stable_tag" >> $GITHUB_ENV
+          # Check if XRAY_CORE_LATEST_STABLE_TAG is defined in repository variables
+          if [ -n "${{ vars.XRAY_CORE_LATEST_STABLE_TAG }}" ] && [ "${{ vars.XRAY_CORE_LATEST_STABLE_TAG }}" != "$latest_stable_tag" ]; then
+            echo "Warn: XRAY_CORE_LATEST_STABLE_TAG is locked to ${{ vars.XRAY_CORE_LATEST_STABLE_TAG }} in repository variables, overriding fetched value ($latest_stable_tag)."
+            echo "LATEST_STABLE_TAG=${{ vars.XRAY_CORE_LATEST_STABLE_TAG }}" >> $GITHUB_ENV
+          else
+            echo "LATEST_STABLE_TAG=$latest_stable_tag" >> $GITHUB_ENV
+          fi
           exit 0
 
       - name: Check and sync stable branch
