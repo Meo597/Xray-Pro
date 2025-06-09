@@ -34,6 +34,11 @@ require (
 	lukechampine.com/blake3 v1.4.0
 )
 
+// Replace github.com/xtls/reality with a forked version from github.com/meo597/xray-pro.
+// This applies to the branch REALITY/pro/250502/bpfeat-REALITY-Add-rate-limiting-to-fallback-handling-via-token-bucket in this repository,
+// forked from an upstream stable commit, and incorporates PR#12 changes.
+replace github.com/xtls/reality => github.com/meo597/xray-pro v0.0.0-20250609155122-d4886e814401
+
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
