@@ -365,16 +365,32 @@ jobs:
       - name: Create github release
         if: env.LATEST_STABLE_TAG != '' && env.MERGE_FAILED == 'false'
         run: |
-          echo "Creating a GitHub Release for tag ${{ env.LATEST_STABLE_TAG }} on branch ${{ env.RELEASE_BRANCH }}."
+          # Extract the base version from LATEST_STABLE_TAG
+          BASE_VERSION=$(echo "${{ env.LATEST_STABLE_TAG }}" | sed 's/\.[0-9]*$//')
+          if [ -z "$BASE_VERSION" ] || [ "$BASE_VERSION" = "${{ env.LATEST_STABLE_TAG }}" ]; then
+            echo "Error: Failed to extract base version from tag ${{ env.LATEST_STABLE_TAG }}."
+            exit 1
+          fi
+          echo "Base version extracted: $BASE_VERSION."
+
+          # Get current date in yymmdd format
+          CURRENT_DATE=$(date +%y%m%d)
+          echo "Current date: $CURRENT_DATE."
+
+          # Construct new version tag
+          NEW_TAG="${BASE_VERSION}.${CURRENT_DATE}"
+          echo "New version tag: $NEW_TAG."
+
+          echo "Creating a GitHub Release for tag $NEW_TAG on branch ${{ env.RELEASE_BRANCH }}."
 
           # Check if a release already exists for the tag
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases" | \
-            jq -r ".[] | select(.tag_name == \"${{ env.LATEST_STABLE_TAG }}\") | {id: .id, tag_name: .tag_name}")
+            jq -r ".[] | select(.tag_name == \"$NEW_TAG\") | {id: .id, tag_name: .tag_name}")
           RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r ".id")
 
           if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
-            echo "Release for tag ${{ env.LATEST_STABLE_TAG }} already exists (ID: $RELEASE_ID). Deleting it..."
+            echo "Release for tag $NEW_TAG already exists (ID: $RELEASE_ID). Deleting it..."
             # Delete the existing release
             response=$(curl -s -w "%{http_code}" -X DELETE \
               -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
@@ -384,7 +400,7 @@ jobs:
             body=$(echo "$response" | head -n -1)
 
             if [ "$http_code" -eq 204 ]; then
-              echo "Successfully deleted existing Release for tag ${{ env.LATEST_STABLE_TAG }} (ID: $RELEASE_ID)."
+              echo "Successfully deleted existing Release for tag $NEW_TAG (ID: $RELEASE_ID)."
               echo "Waiting 60 seconds for GitHub to process release deletion..."
               sleep 60
             else
@@ -395,15 +411,15 @@ jobs:
           fi
 
           # Check if the tag already exists in the repository
-          TAG_EXISTS=$(git ls-remote origin "refs/tags/${{ env.LATEST_STABLE_TAG }}" | wc -l)
+          TAG_EXISTS=$(git ls-remote origin "refs/tags/$NEW_TAG" | wc -l)
           if [ "$TAG_EXISTS" -gt 0 ]; then
-            echo "Tag ${{ env.LATEST_STABLE_TAG }} already exists in the repository. Deleting it..."
-            if git push origin --delete "refs/tags/${{ env.LATEST_STABLE_TAG }}"; then
-              echo "Successfully deleted existing tag ${{ env.LATEST_STABLE_TAG }} from remote."
+            echo "Tag $NEW_TAG already exists in the repository. Deleting it..."
+            if git push origin --delete "refs/tags/$NEW_TAG"; then
+              echo "Successfully deleted existing tag $NEW_TAG from remote."
               echo "Waiting 60 seconds for GitHub to process tag deletion..."
               sleep 60
             else
-              echo "Error: Failed to delete existing tag ${{ env.LATEST_STABLE_TAG }}. Check permissions or branch protection rules."
+              echo "Error: Failed to delete existing tag $NEW_TAG. Check permissions or branch protection rules."
               exit 1
             fi
           fi
@@ -430,9 +446,9 @@ jobs:
 
           # Create the release payload
           RELEASE_DATA=$(jq -n \
-            --arg tag_name "${{ env.LATEST_STABLE_TAG }}" \
+            --arg tag_name "$NEW_TAG" \
             --arg target_commitish "refs/heads/${{ env.RELEASE_BRANCH }}" \
-            --arg name "Xray-core Pro ${{ env.LATEST_STABLE_TAG }}" \
+            --arg name "Xray-core Pro $NEW_TAG" \
             --arg body "$RELEASE_NOTES" \
             --arg draft "false" \
             --arg prerelease "false" \
@@ -448,7 +464,7 @@ jobs:
           body=$(echo "$response" | head -n -1)
 
           if [ "$http_code" -eq 201 ]; then
-            echo "Successfully created GitHub Release for tag ${{ env.LATEST_STABLE_TAG }}."
+            echo "Successfully created GitHub Release for tag $NEW_TAG."
             NEW_RELEASE_ID=$(echo "$body" | jq -r '.id')
             echo "Release ID: $NEW_RELEASE_ID."
             exit 0
