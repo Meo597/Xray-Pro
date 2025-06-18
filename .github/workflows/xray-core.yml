@@ -451,7 +451,7 @@ jobs:
             --arg name "Xray-core Pro $NEW_TAG" \
             --arg body "$RELEASE_NOTES" \
             --arg draft "false" \
-            --arg prerelease "false" \
+            --arg prerelease "true" \
             '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name, body: ($body | gsub("\\\\n"; "\n")), draft: $draft | test("true"), prerelease: $prerelease | test("true")}')
 
           # Create the release using GitHub API
