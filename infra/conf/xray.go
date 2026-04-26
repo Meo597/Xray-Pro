@@ -130,6 +130,7 @@ type InboundDetourConfig struct {
 	Tag            string           `json:"tag"`
 	StreamSetting  *StreamConfig    `json:"streamSettings"`
 	SniffingConfig *SniffingConfig  `json:"sniffing"`
+	IPsBlocked     *StringList      `json:"ipsBlocked"`
 }
 
 // Build implements Buildable.
@@ -184,6 +185,13 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 			return nil, errors.New("failed to build sniffing config").Base(err)
 		}
 		receiverSettings.SniffingSettings = s
+	}
+	if c.IPsBlocked != nil {
+		rules, err := geodata.ParseIPRules(*c.IPsBlocked)
+		if err != nil {
+			return nil, errors.New("failed to parse inbound blocked ips").Base(err)
+		}
+		receiverSettings.IpsBlocked = rules
 	}
 
 	settings := []byte("{}")

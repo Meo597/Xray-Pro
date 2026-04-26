@@ -6,6 +6,7 @@ import (
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/errors"
+	"github.com/xtls/xray-core/common/geodata"
 	"github.com/xtls/xray-core/common/mux"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/serial"
@@ -58,9 +59,17 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 		return nil, err
 	}
 
+	var blockedIPMatcher geodata.IPMatcher
+	if len(receiverConfig.IpsBlocked) > 0 {
+		blockedIPMatcher, err = geodata.IPReg.BuildIPMatcher(receiverConfig.IpsBlocked)
+		if err != nil {
+			return nil, errors.New("failed to build inbound blocked ip matcher").Base(err)
+		}
+	}
+
 	// Set tag and sniffing config in context before creating proxy
 	// This allows proxies like TUN to access these settings
-	ctx = session.ContextWithInbound(ctx, &session.Inbound{Tag: tag})
+	ctx = session.ContextWithInbound(ctx, &session.Inbound{Tag: tag, BlockedIPMatcher: blockedIPMatcher})
 	if receiverConfig.SniffingSettings != nil {
 		ctx = session.ContextWithContent(ctx, &session.Content{
 			SniffingRequest: sniffingRequest,
@@ -111,15 +120,16 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 			errors.LogDebug(ctx, "creating unix domain socket worker on ", address)
 
 			worker := &dsWorker{
-				address:         address,
-				proxy:           p,
-				stream:          mss,
-				tag:             tag,
-				dispatcher:      h.mux,
-				sniffingRequest: sniffingRequest,
-				uplinkCounter:   uplinkCounter,
-				downlinkCounter: downlinkCounter,
-				ctx:             ctx,
+				address:          address,
+				proxy:            p,
+				stream:           mss,
+				tag:              tag,
+				blockedIPMatcher: blockedIPMatcher,
+				dispatcher:       h.mux,
+				sniffingRequest:  sniffingRequest,
+				uplinkCounter:    uplinkCounter,
+				downlinkCounter:  downlinkCounter,
+				ctx:              ctx,
 			}
 			h.workers = append(h.workers, worker)
 		}
@@ -131,33 +141,35 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					errors.LogDebug(ctx, "creating stream worker on ", address, ":", port)
 
 					worker := &tcpWorker{
-						address:         address,
-						port:            net.Port(port),
-						proxy:           p,
-						stream:          mss,
-						recvOrigDest:    receiverConfig.ReceiveOriginalDestination,
-						tag:             tag,
-						dispatcher:      h.mux,
-						sniffingRequest: sniffingRequest,
-						uplinkCounter:   uplinkCounter,
-						downlinkCounter: downlinkCounter,
-						ctx:             ctx,
+						address:          address,
+						port:             net.Port(port),
+						proxy:            p,
+						stream:           mss,
+						recvOrigDest:     receiverConfig.ReceiveOriginalDestination,
+						tag:              tag,
+						blockedIPMatcher: blockedIPMatcher,
+						dispatcher:       h.mux,
+						sniffingRequest:  sniffingRequest,
+						uplinkCounter:    uplinkCounter,
+						downlinkCounter:  downlinkCounter,
+						ctx:              ctx,
 					}
 					h.workers = append(h.workers, worker)
 				}
 
 				if net.HasNetwork(nl, net.Network_UDP) {
 					worker := &udpWorker{
-						tag:             tag,
-						proxy:           p,
-						address:         address,
-						port:            net.Port(port),
-						dispatcher:      h.mux,
-						sniffingRequest: sniffingRequest,
-						uplinkCounter:   uplinkCounter,
-						downlinkCounter: downlinkCounter,
-						stream:          mss,
-						ctx:             ctx,
+						tag:              tag,
+						blockedIPMatcher: blockedIPMatcher,
+						proxy:            p,
+						address:          address,
+						port:             net.Port(port),
+						dispatcher:       h.mux,
+						sniffingRequest:  sniffingRequest,
+						uplinkCounter:    uplinkCounter,
+						downlinkCounter:  downlinkCounter,
+						stream:           mss,
+						ctx:              ctx,
 					}
 					h.workers = append(h.workers, worker)
 				}

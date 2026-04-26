@@ -43,6 +43,8 @@ type Inbound struct {
 	Gateway net.Destination
 	// Tag of the inbound proxy that handles the connection.
 	Tag string
+	// BlockedIPMatcher is configured at inbound level. May be nil.
+	BlockedIPMatcher geodata.IPMatcher
 	// Name of the inbound proxy that handles the connection.
 	Name string
 	// User is the user that authenticates for the inbound. May be nil if the protocol allows anonymous traffic.
@@ -85,6 +87,10 @@ type SniffingRequest struct {
 	Enabled                        bool
 	MetadataOnly                   bool
 	RouteOnly                      bool
+}
+
+func IsSourceIPBlocked(matcher geodata.IPMatcher, source net.Destination) bool {
+	return matcher != nil && source.Address.Family().IsIP() && matcher.Match(source.Address.IP())
 }
 
 // Content is the metadata of the connection content. Mainly used for routing.

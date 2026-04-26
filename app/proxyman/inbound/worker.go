@@ -10,6 +10,7 @@ import (
 	"github.com/xtls/xray-core/common/buf"
 	c "github.com/xtls/xray-core/common/ctx"
 	"github.com/xtls/xray-core/common/errors"
+	"github.com/xtls/xray-core/common/geodata"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/common/session"
@@ -35,16 +36,17 @@ type worker interface {
 }
 
 type tcpWorker struct {
-	address         net.Address
-	port            net.Port
-	proxy           proxy.Inbound
-	stream          *internet.MemoryStreamConfig
-	recvOrigDest    bool
-	tag             string
-	dispatcher      routing.Dispatcher
-	sniffingRequest session.SniffingRequest
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
+	address          net.Address
+	port             net.Port
+	proxy            proxy.Inbound
+	stream           *internet.MemoryStreamConfig
+	recvOrigDest     bool
+	tag              string
+	blockedIPMatcher geodata.IPMatcher
+	dispatcher       routing.Dispatcher
+	sniffingRequest  session.SniffingRequest
+	uplinkCounter    stats.Counter
+	downlinkCounter  stats.Counter
 
 	hub internet.Listener
 
@@ -62,6 +64,14 @@ func (w *tcpWorker) callback(conn stat.Connection) {
 	ctx, cancel := context.WithCancel(w.ctx)
 	sid := session.NewID()
 	ctx = c.ContextWithID(ctx, sid)
+
+	source := net.DestinationFromAddr(conn.RemoteAddr())
+	if w.shouldBlockSourceInCallback() && session.IsSourceIPBlocked(w.blockedIPMatcher, source) {
+		errors.LogInfo(ctx, "blocked source IP: ", source.Address, " on inbound ", w.tag)
+		cancel()
+		conn.Close()
+		return
+	}
 
 	outbounds := []*session.Outbound{{}}
 	if w.recvOrigDest {
@@ -109,11 +119,12 @@ func (w *tcpWorker) callback(conn stat.Connection) {
 		}
 	}
 	ctx = session.ContextWithInbound(ctx, &session.Inbound{
-		Source:  net.DestinationFromAddr(conn.RemoteAddr()),
-		Local:   net.DestinationFromAddr(conn.LocalAddr()),
-		Gateway: net.TCPDestination(w.address, w.port),
-		Tag:     w.tag,
-		Conn:    conn,
+		Source:           source,
+		Local:            net.DestinationFromAddr(conn.LocalAddr()),
+		Gateway:          net.TCPDestination(w.address, w.port),
+		Tag:              w.tag,
+		BlockedIPMatcher: w.blockedIPMatcher,
+		Conn:             conn,
 	})
 
 	content := new(session.Content)
@@ -131,8 +142,26 @@ func (w *tcpWorker) Proxy() proxy.Inbound {
 	return w.proxy
 }
 
+func (w *tcpWorker) shouldBlockSourceInCallback() bool {
+	if w.blockedIPMatcher == nil {
+		return false
+	}
+	if w.stream == nil {
+		return false
+	}
+	switch w.stream.ProtocolName {
+	case "tcp":
+		return false
+	default:
+		return true
+	}
+}
+
 func (w *tcpWorker) Start() error {
-	ctx := context.Background()
+	ctx := w.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	type HysteriaInboundValidator interface{ HysteriaInboundValidator() *account.Validator }
 	if v, ok := w.proxy.(HysteriaInboundValidator); ok {
@@ -261,16 +290,17 @@ type connID struct {
 type udpWorker struct {
 	sync.RWMutex
 
-	proxy           proxy.Inbound
-	hub             *udp.Hub
-	address         net.Address
-	port            net.Port
-	tag             string
-	stream          *internet.MemoryStreamConfig
-	dispatcher      routing.Dispatcher
-	sniffingRequest session.SniffingRequest
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
+	proxy            proxy.Inbound
+	hub              *udp.Hub
+	address          net.Address
+	port             net.Port
+	tag              string
+	blockedIPMatcher geodata.IPMatcher
+	stream           *internet.MemoryStreamConfig
+	dispatcher       routing.Dispatcher
+	sniffingRequest  session.SniffingRequest
+	uplinkCounter    stats.Counter
+	downlinkCounter  stats.Counter
 
 	checker    *task.Periodic
 	activeConn map[connID]*udpConn
@@ -314,6 +344,12 @@ func (w *udpWorker) getConnection(id connID) (*udpConn, bool) {
 }
 
 func (w *udpWorker) callback(b *buf.Buffer, source net.Destination, originalDest net.Destination) {
+	if session.IsSourceIPBlocked(w.blockedIPMatcher, source) {
+		b.Release()
+		errors.LogInfo(w.ctx, "blocked source IP: ", source.Address, " on inbound ", w.tag)
+		return
+	}
+
 	id := connID{
 		src: source,
 	}
@@ -352,10 +388,11 @@ func (w *udpWorker) callback(b *buf.Buffer, source net.Destination, originalDest
 			}
 
 			ctx = session.ContextWithInbound(ctx, &session.Inbound{
-				Source:  source,
-				Local:   local, // Due to some limitations, in UDP connections, localIP is always equal to listen interface IP
-				Gateway: net.UDPDestination(w.address, w.port),
-				Tag:     w.tag,
+				Source:           source,
+				Local:            local, // Due to some limitations, in UDP connections, localIP is always equal to listen interface IP
+				Gateway:          net.UDPDestination(w.address, w.port),
+				Tag:              w.tag,
+				BlockedIPMatcher: w.blockedIPMatcher,
 			})
 			content := new(session.Content)
 			content.SniffingRequest = w.sniffingRequest
@@ -469,14 +506,15 @@ func (w *udpWorker) Proxy() proxy.Inbound {
 }
 
 type dsWorker struct {
-	address         net.Address
-	proxy           proxy.Inbound
-	stream          *internet.MemoryStreamConfig
-	tag             string
-	dispatcher      routing.Dispatcher
-	sniffingRequest session.SniffingRequest
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
+	address          net.Address
+	proxy            proxy.Inbound
+	stream           *internet.MemoryStreamConfig
+	tag              string
+	blockedIPMatcher geodata.IPMatcher
+	dispatcher       routing.Dispatcher
+	sniffingRequest  session.SniffingRequest
+	uplinkCounter    stats.Counter
+	downlinkCounter  stats.Counter
 
 	hub internet.Listener
 
@@ -496,11 +534,12 @@ func (w *dsWorker) callback(conn stat.Connection) {
 		}
 	}
 	ctx = session.ContextWithInbound(ctx, &session.Inbound{
-		Source:  net.DestinationFromAddr(conn.RemoteAddr()),
-		Local:   net.DestinationFromAddr(conn.LocalAddr()),
-		Gateway: net.UnixDestination(w.address),
-		Tag:     w.tag,
-		Conn:    conn,
+		Source:           net.DestinationFromAddr(conn.RemoteAddr()),
+		Local:            net.DestinationFromAddr(conn.LocalAddr()),
+		Gateway:          net.UnixDestination(w.address),
+		Tag:              w.tag,
+		BlockedIPMatcher: w.blockedIPMatcher,
+		Conn:             conn,
 	})
 
 	content := new(session.Content)

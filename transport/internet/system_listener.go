@@ -12,6 +12,7 @@ import (
 	"github.com/pires/go-proxyproto"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/common/session"
 )
 
 var effectiveListener = DefaultListener{}
@@ -74,9 +75,42 @@ func (conn *UnixConnWrapper) RemoteAddr() net.Addr {
 	}
 }
 
+type sourceBlockListener struct {
+	net.Listener
+	inbound *session.Inbound
+}
+
+func (l *sourceBlockListener) Accept() (net.Conn, error) {
+	for {
+		conn, err := l.Listener.Accept()
+		if err != nil {
+			return nil, err
+		}
+		source := net.DestinationFromAddr(conn.RemoteAddr())
+		if session.IsSourceIPBlocked(l.inbound.BlockedIPMatcher, source) {
+			errors.LogInfo(context.Background(), "blocked source IP: ", source.Address, " on inbound ", l.inbound.Tag)
+			conn.Close()
+			continue
+		}
+		return conn, nil
+	}
+}
+
+func wrapSourceBlockListener(ctx context.Context, listener net.Listener) net.Listener {
+	inbound := session.InboundFromContext(ctx)
+	if inbound == nil || inbound.BlockedIPMatcher == nil {
+		return listener
+	}
+	return &sourceBlockListener{
+		Listener: listener,
+		inbound:  inbound,
+	}
+}
+
 func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *SocketConfig) (l net.Listener, err error) {
 	var lc net.ListenConfig
 	var network, address string
+	blockSourceIP := false
 	// callback is called after the Listen function returns
 	callback := func(l net.Listener, err error) (net.Listener, error) {
 		return l, err
@@ -84,6 +118,7 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 
 	switch addr := addr.(type) {
 	case *net.TCPAddr:
+		blockSourceIP = true
 		network = addr.Network()
 		address = addr.String()
 		lc.Control = getControlFunc(ctx, sockopt, dl.controllers)
@@ -169,6 +204,9 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 	if err == nil && sockopt != nil && sockopt.AcceptProxyProtocol {
 		policyFunc := func(upstream net.Addr) (proxyproto.Policy, error) { return proxyproto.REQUIRE, nil }
 		l = &proxyproto.Listener{Listener: l, Policy: policyFunc}
+	}
+	if err == nil && blockSourceIP {
+		l = wrapSourceBlockListener(ctx, l)
 	}
 	return l, err
 }

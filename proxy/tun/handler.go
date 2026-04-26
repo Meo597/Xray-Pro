@@ -8,6 +8,7 @@ import (
 	"github.com/xtls/xray-core/common/buf"
 	c "github.com/xtls/xray-core/common/ctx"
 	"github.com/xtls/xray-core/common/errors"
+	"github.com/xtls/xray-core/common/geodata"
 	"github.com/xtls/xray-core/common/log"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/protocol"
@@ -22,14 +23,15 @@ import (
 
 // Handler is managing object that tie together tun interface, ip stack and dispatch connections to the routing
 type Handler struct {
-	ctx             context.Context
-	config          *Config
-	stack           Stack
-	tun             Tun
-	policyManager   policy.Manager
-	dispatcher      routing.Dispatcher
-	tag             string
-	sniffingRequest session.SniffingRequest
+	ctx              context.Context
+	config           *Config
+	stack            Stack
+	tun              Tun
+	policyManager    policy.Manager
+	dispatcher       routing.Dispatcher
+	tag              string
+	blockedIPMatcher geodata.IPMatcher
+	sniffingRequest  session.SniffingRequest
 }
 
 // ConnectionHandler interface with the only method that stack is going to push new connections to
@@ -47,6 +49,7 @@ func (t *Handler) Init(ctx context.Context, pm policy.Manager, dispatcher routin
 	// Retrieve tag and sniffing config from context (set by AlwaysOnInboundHandler)
 	if inbound := session.InboundFromContext(ctx); inbound != nil {
 		t.tag = inbound.Tag
+		t.blockedIPMatcher = inbound.BlockedIPMatcher
 	}
 	if content := session.ContentFromContext(ctx); content != nil {
 		t.sniffingRequest = content.SniffingRequest
@@ -132,11 +135,16 @@ func (t *Handler) HandleConnection(conn net.Conn, destination net.Destination) {
 	ctx = c.ContextWithID(ctx, session.NewID())
 
 	source := net.DestinationFromAddr(conn.RemoteAddr())
+	if session.IsSourceIPBlocked(t.blockedIPMatcher, source) {
+		errors.LogInfo(ctx, "blocked source IP: ", source.Address, " on inbound ", t.tag)
+		return
+	}
 	inbound := session.Inbound{
-		Name:          "tun",
-		Tag:           t.tag,
-		CanSpliceCopy: 3,
-		Source:        source,
+		Name:             "tun",
+		Tag:              t.tag,
+		BlockedIPMatcher: t.blockedIPMatcher,
+		CanSpliceCopy:    3,
+		Source:           source,
 		User: &protocol.MemoryUser{
 			Level: t.config.UserLevel,
 		},
