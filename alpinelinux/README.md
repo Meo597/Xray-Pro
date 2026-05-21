@@ -21,7 +21,7 @@ emerge net-misc/curl
 #### Download Installation Script
 
 ```sh
-curl -O -L https://github.com/XTLS/Xray-install/raw/main/alpinelinux/install-release.sh
+curl -O -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/alpinelinux/install-release.sh
 ```
 
 #### Run Installation Script
