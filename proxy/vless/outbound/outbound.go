@@ -292,20 +292,13 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		ob.CanSpliceCopy = 3
 	}
 
-	var newCtx context.Context
-	var newCancel context.CancelFunc
 	if session.TimeoutOnlyFromContext(ctx) {
-		newCtx, newCancel = context.WithCancel(context.Background())
+		ctx = context.WithoutCancel(ctx)
 	}
 
 	sessionPolicy := h.policyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
-	timer := signal.CancelAfterInactivity(ctx, func() {
-		cancel()
-		if newCancel != nil {
-			newCancel()
-		}
-	}, sessionPolicy.Timeouts.ConnectionIdle)
+	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
 
 	clientReader := link.Reader // .(*pipe.Reader)
 	clientWriter := link.Writer // .(*pipe.Writer)
@@ -409,10 +402,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		}
 
 		return nil
-	}
-
-	if newCtx != nil {
-		ctx = newCtx
 	}
 
 	if err := task.Run(ctx, postRequest, task.OnSuccess(getResponse, task.Close(clientWriter))); err != nil {
