@@ -84,6 +84,10 @@ func (o *Outbound) Process(ctx context.Context, link *transport.Link, dialer int
 	}
 	defer connection.Close()
 
+	if session.TimeoutOnlyFromContext(ctx) {
+		ctx = context.WithoutCancel(ctx)
+	}
+
 	if network == net.Network_TCP {
 		serverConn := o.method.DialEarlyConn(connection, singbridge.ToSocksaddr(destination))
 		var handshake bool
