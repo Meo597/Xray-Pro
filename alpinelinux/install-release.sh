@@ -326,7 +326,7 @@ curl_with_proxy() {
 get_prerelease() {
     local releases_file="${TMP_DIRECTORY}releases.json"
     if ! curl_with_proxy -f -sSL -H 'Accept: application/vnd.github+json' -o "$releases_file" \
-        'https://api.github.com/repos/XTLS/Xray-core/releases'; then
+        'https://api.github.com/repos/Meo597/Xray-Pro/releases'; then
         echo 'error: Failed to get release list, please check your network.'
         return 1
     fi
@@ -335,7 +335,7 @@ get_prerelease() {
             for (i = 1; i + 2 <= NF; i++) {
                 url = $(i + 2)
                 if ($i == "browser_download_url" &&
-                    index(url, "https://github.com/XTLS/Xray-core/releases/download/") == 1 &&
+                    index(url, "https://github.com/Meo597/Xray-Pro/releases/download/") == 1 &&
                     substr(url, length(url) - length(archive) + 1) == archive) {
                     print url
                     found = 1
@@ -634,7 +634,7 @@ main() {
         install_dependencies curl unzip
     fi
     ZIP_FILE="${TMP_DIRECTORY}Xray-linux-$MACHINE.zip"
-    DOWNLOAD_LINK="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-$MACHINE.zip"
+    DOWNLOAD_LINK="https://github.com/Meo597/Xray-Pro/releases/latest/download/Xray-linux-$MACHINE.zip"
 
     if [ -n "$LOCAL_FILE" ]; then
         ZIP_FILE="$LOCAL_FILE"
