@@ -61,13 +61,13 @@ Notice: Xray will NOT log to `/var/log/xray/*.log` by default. Configure `"log"`
 **Install & Upgrade Xray-core**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install
 ```
 
 **Update geoip.dat and geosite.dat only**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ update-geodata
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ update-geodata
 ```
 
 **Xray bundles GeoIP lite and GeoSite standard; this command downloads GeoIP full and GeoSite expanded.** Data comes from [XTLS/Xray-rules-dat](https://github.com/XTLS/Xray-rules-dat).
@@ -75,18 +75,18 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 **Remove Xray, except json and logs**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ remove
 ```
 
 **Check for updates**
 
 ```sh
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ check
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ check
 ```
 
 ## Install from a local archive (alternative)
 
-Download the [installation script](install-release.sh) and the [Xray-core zip](https://github.com/XTLS/Xray-core/releases) for your architecture, then run as root (x86_64 example):
+Download the [installation script](install-release.sh) and the [Xray-core zip](https://github.com/Meo597/Xray-Pro/releases) for your architecture, then run as root (x86_64 example):
 
 ```sh
 bash install-release.sh install --local ./Xray-linux-64.zip
@@ -99,7 +99,7 @@ Use `--geoip` and `--geosite` independently to supply local data; omitted option
 **Install or upgrade through a proxy**
 
 ```sh
-bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --proxy http://127.0.0.1:8118
+bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --proxy http://127.0.0.1:8118
 ```
 
 `--proxy` supports HTTP and SOCKS proxies and also applies to `update-geodata` and `check`.
@@ -107,13 +107,13 @@ bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/XTLS/Xray-install
 **Install & Upgrade Xray-core to a pre-release version**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --beta
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --beta
 ```
 
 **Install & Upgrade Xray-core with `logrotate`, `$time` can be in the format of 12:34:56**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --logrotate $time
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --logrotate $time
 ```
 
 ```
@@ -126,13 +126,13 @@ installed: /etc/logrotate.d/xray
 **Install & Upgrade Xray-core without geodata**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --without-geodata
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --without-geodata
 ```
 
 **Remove Xray, include json and logs**
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ remove --purge
 ```
 
 ## Other options
@@ -161,7 +161,7 @@ JSONS_PATH=/usr/local/etc/xray bash install-release.sh install
 ## More Usage
 
 ```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ help
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ help
 ```
 
 ## Stargazers over time
