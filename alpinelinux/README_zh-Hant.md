@@ -54,7 +54,7 @@ emerge net-misc/curl
 #### 下載安裝腳本
 
 ```sh
-curl -O -L https://github.com/XTLS/Xray-install/raw/main/alpinelinux/install-release.sh
+curl -O -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/alpinelinux/install-release.sh
 ```
 
 #### 執行腳本以安裝或升級 Xray
@@ -81,7 +81,7 @@ sh install-release.sh --beta
 
 ## 從本機壓縮檔安裝（備選方式）
 
-下載[安裝腳本](install-release.sh)及對應系統架構的 [Xray-core 壓縮檔](https://github.com/XTLS/Xray-core/releases)。以下以 x86_64 為例：
+下載[安裝腳本](install-release.sh)及對應系統架構的 [Xray-core 壓縮檔](https://github.com/Meo597/Xray-Pro/releases)。以下以 x86_64 為例：
 
 ```sh
 sh install-release.sh --local ./Xray-linux-64.zip
