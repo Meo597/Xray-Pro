@@ -65,7 +65,7 @@
 \* 若 SSH 透過 Xray 連線，升級時務必使用 `--manually-restart-later`，避免斷線導致腳本出錯。
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install
 ```
 
 **更新 geoip.dat 和 geosite.dat**
@@ -73,24 +73,24 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 \* Xray 內附的是 GeoIP lite 和 GeoSite standard，此指令下載 GeoIP full 和 GeoSite expanded。資料來自 [XTLS/Xray-rules-dat](https://github.com/XTLS/Xray-rules-dat)。
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ update-geodata
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ update-geodata
 ```
 
 **移除 Xray，但保留 json 設定檔案和日誌**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ remove
 ```
 
 **檢查 Xray 更新**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ check
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ check
 ```
 
 ## 從本機壓縮檔安裝（備選方式）
 
-下載[安裝腳本](install-release.sh)及對應系統架構的 [Xray-core 壓縮檔](https://github.com/XTLS/Xray-core/releases)。以下以 x86_64 為例：
+下載[安裝腳本](install-release.sh)及對應系統架構的 [Xray-core 壓縮檔](https://github.com/Meo597/Xray-Pro/releases)。以下以 x86_64 為例：
 
 ```bash
 bash install-release.sh install --local ./Xray-linux-64.zip
@@ -103,7 +103,7 @@ bash install-release.sh install --local ./Xray-linux-64.zip
 **透過代理安裝或升級 Xray**
 
 ```bash
-bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --proxy http://127.0.0.1:8118
+bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --proxy http://127.0.0.1:8118
 ```
 
 `--proxy` 支援 HTTP 和 SOCKS 代理，也適用於 `update-geodata` 和 `check`。
@@ -111,7 +111,7 @@ bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/XTLS/Xray-install
 **安裝或升級 Xray 到預發布版本**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --beta
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --beta
 ```
 
 **安裝或升級 Xray，並啟用 `logrotate`，`$time` 可以是 12:34:56 格式的時間**
@@ -119,7 +119,7 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 注意：Xray 預設不會將日誌記錄到 `/var/log/xray/*.log`。請在<a href="https://xtls.github.io/en/config/log.html" target="_blank">日誌設定</a>中指定日誌檔案路徑。
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --logrotate $time
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --logrotate $time
 ```
 
 ```
@@ -132,13 +132,13 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 **安裝或升級 Xray，但不包含 Geodata**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --without-geodata
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --without-geodata
 ```
 
 **移除 Xray，包括 json 設定檔案和日誌**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ remove --purge
 ```
 
 ## 其他參數
@@ -171,7 +171,7 @@ JSONS_PATH=/usr/local/etc/xray bash install-release.sh install
 ## 更多用法
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ help
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ help
 ```
 
 ## 憑證檔案權限

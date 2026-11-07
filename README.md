@@ -65,7 +65,7 @@ Installed files:
 \* If SSH goes through Xray, you must use `--manually-restart-later` when upgrading to prevent a disconnection from causing script errors.
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install
 ```
 
 **Update geoip.dat and geosite.dat**
@@ -73,24 +73,24 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 \* Xray bundles GeoIP lite and GeoSite standard; this command downloads GeoIP full and GeoSite expanded. Data comes from [XTLS/Xray-rules-dat](https://github.com/XTLS/Xray-rules-dat).
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ update-geodata
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ update-geodata
 ```
 
 **Remove Xray, but keep json configuration files and logs**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ remove
 ```
 
 **Check for Xray updates**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ check
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ check
 ```
 
 ## Install from a local archive (alternative)
 
-Download the [installation script](install-release.sh) and the [Xray-core zip](https://github.com/XTLS/Xray-core/releases) for your architecture (x86_64 example):
+Download the [installation script](install-release.sh) and the [Xray-core zip](https://github.com/Meo597/Xray-Pro/releases) for your architecture (x86_64 example):
 
 ```bash
 bash install-release.sh install --local ./Xray-linux-64.zip
@@ -103,7 +103,7 @@ You can also use `--geoip` and `--geosite` independently to supply local Geodata
 **Install or upgrade Xray through a proxy**
 
 ```bash
-bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --proxy http://127.0.0.1:8118
+bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --proxy http://127.0.0.1:8118
 ```
 
 `--proxy` supports HTTP and SOCKS proxies and also applies to `update-geodata` and `check`.
@@ -111,7 +111,7 @@ bash -c "$(curl -x http://127.0.0.1:8118 -L https://github.com/XTLS/Xray-install
 **Install or upgrade Xray to a pre-release version**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --beta
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --beta
 ```
 
 **Install or upgrade Xray and enable `logrotate`; `$time` can be a time in the format 12:34:56**
@@ -119,7 +119,7 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 Notice: Xray will NOT log to `/var/log/xray/*.log` by default. Specify log file paths in the <a href="https://xtls.github.io/en/config/log.html" target="_blank">log configuration</a>.
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --logrotate $time
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --logrotate $time
 ```
 
 ```
@@ -132,13 +132,13 @@ Installed files:
 **Install or upgrade Xray without Geodata**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --without-geodata
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ install --without-geodata
 ```
 
 **Remove Xray, including json configuration files and logs**
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove --purge
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ remove --purge
 ```
 
 ## Other options
@@ -171,7 +171,7 @@ Each instance's configuration files should have the same owner, group, and permi
 ## More Usage
 
 ```bash
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ help
+bash -c "$(curl -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/install-release.sh)" @ help
 ```
 
 ## Certificate file permissions
