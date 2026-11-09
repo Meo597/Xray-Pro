@@ -37,11 +37,9 @@ func Compile(script string) (*Program, error) {
 		return nil, errors.New("currently unavailable")
 		code, err = base64.Decode(script)
 	} else if name, err = filesystem.ResolveLuaFile(script); err == nil {
-		code, err = os.ReadFile(name)
-		// TODO: Restore privileged signature authorization and re-enable the related tests and CLI entries.
-		// if err == nil {
-		// 	privileged, err = verifyPrivilegedSignature(code)
-		// }
+		if code, err = os.ReadFile(name); err == nil {
+			privileged, err = verifyPrivilegedSignature(code)
+		}
 	}
 	if err != nil {
 		return nil, err
