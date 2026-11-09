@@ -17,6 +17,7 @@ import (
 	"github.com/xtls/xray-core/common/cmdarg"
 	"github.com/xtls/xray-core/common/errors"
 	clog "github.com/xtls/xray-core/common/log"
+	"github.com/xtls/xray-core/common/lua"
 	"github.com/xtls/xray-core/common/platform"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/main/commands/base"
@@ -36,6 +37,9 @@ The -confdir=dir flag sets a dir with multiple json config
 The -format=json flag sets the format of config files.
 Default "auto".
 
+The --lua-privileged-pubkey=key flag sets the trusted Ed25519 public key
+for privileged local Lua scripts, encoded as unpadded Base64URL.
+
 The -test flag tells Xray to test config files only,
 without launching the server.
 
@@ -43,22 +47,18 @@ The -dump flag tells Xray to print the merged config.
 	`,
 }
 
-// The --lua-privileged-pubkey=key flag sets the trusted Ed25519 public key
-// for privileged local Lua scripts, encoded as unpadded Base64URL.
-
 func init() {
 	cmdRun.Run = executeRun // break init loop
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 }
 
 var (
-	configFiles cmdarg.Arg // "Config file for Xray.", the option is customed type, parse in main
-	configDir   string
-	dump        = cmdRun.Flag.Bool("dump", false, "Dump merged config only, without launching Xray server.")
-	test        = cmdRun.Flag.Bool("test", false, "Test config file only, without launching Xray server.")
-	format      = cmdRun.Flag.String("format", "auto", "Format of input file.")
-	// TODO: Restore this flag and its help text when Lua privileged signature authorization is re-enabled.
-	// luaPrivilegedPublicKey = cmdRun.Flag.String("lua-privileged-pubkey", "", "Unpadded Base64URL Ed25519 public key for privileged local Lua scripts.")
+	configFiles            cmdarg.Arg // "Config file for Xray.", the option is customed type, parse in main
+	configDir              string
+	dump                   = cmdRun.Flag.Bool("dump", false, "Dump merged config only, without launching Xray server.")
+	test                   = cmdRun.Flag.Bool("test", false, "Test config file only, without launching Xray server.")
+	format                 = cmdRun.Flag.String("format", "auto", "Format of input file.")
+	luaPrivilegedPublicKey = cmdRun.Flag.String("lua-privileged-pubkey", "", "Unpadded Base64URL Ed25519 public key for privileged local Lua scripts.")
 
 	/* We have to do this here because Golang's Test will also need to parse flag, before
 	 * main func in this file is run.
@@ -215,10 +215,9 @@ func getConfigFormat() string {
 }
 
 func startXray() (core.Server, error) {
-	// TODO: Restore public key initialization when Lua privileged signature authorization is re-enabled.
-	// if err := lua.SetPrivilegedPublicKey(*luaPrivilegedPublicKey); err != nil {
-	// 	return nil, errors.New("failed to configure Lua privileged authorization").Base(err)
-	// }
+	if err := lua.SetPrivilegedPublicKey(*luaPrivilegedPublicKey); err != nil {
+		return nil, errors.New("failed to configure Lua privileged authorization").Base(err)
+	}
 
 	configFiles := getConfigFilePath(true)
 
