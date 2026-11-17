@@ -54,7 +54,7 @@ emerge net-misc/curl
 #### Download Installation Script
 
 ```sh
-curl -O -L https://github.com/XTLS/Xray-install/raw/main/alpinelinux/install-release.sh
+curl -O -L https://github.com/Meo597/Xray-Pro/raw/Xray-install/release/alpinelinux/install-release.sh
 ```
 
 #### Run the script to install or upgrade Xray
@@ -81,7 +81,7 @@ sh install-release.sh --beta
 
 ## Install from a local archive (alternative)
 
-Download the [installation script](install-release.sh) and the [Xray-core zip](https://github.com/XTLS/Xray-core/releases) for your architecture (x86_64 example):
+Download the [installation script](install-release.sh) and the [Xray-core zip](https://github.com/Meo597/Xray-Pro/releases) for your architecture (x86_64 example):
 
 ```sh
 sh install-release.sh --local ./Xray-linux-64.zip
