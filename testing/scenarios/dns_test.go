@@ -13,6 +13,7 @@ import (
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/core"
+	"github.com/xtls/xray-core/proxy/blackhole"
 	"github.com/xtls/xray-core/proxy/freedom"
 	"github.com/xtls/xray-core/proxy/socks"
 	"github.com/xtls/xray-core/testing/servers/tcp"
@@ -77,7 +78,7 @@ func TestResolveIP(t *testing.T) {
 		},
 		Outbound: []*core.OutboundHandlerConfig{
 			{
-				ProxySettings: serial.ToTypedMessage(&freedom.Config{Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Block, Delay: &freedom.Range{}}}}),
+				ProxySettings: serial.ToTypedMessage(&blackhole.Config{}),
 			},
 			{
 				Tag: "direct",

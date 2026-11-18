@@ -499,7 +499,7 @@ func masqueServerConfig(serverPort net.Port, certificate *tls.Certificate, h2 bo
 						Port:    uint32(dest.Port),
 					},
 				},
-				Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+				FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 			}),
 		}
 	}

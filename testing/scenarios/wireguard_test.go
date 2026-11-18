@@ -61,7 +61,7 @@ func TestWireguard(t *testing.T) {
 						Port:    uint32(dest.Port),
 					},
 				},
-				Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+				FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 			}),
 		}
 	}

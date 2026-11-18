@@ -17,6 +17,7 @@ import (
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/core"
+	"github.com/xtls/xray-core/proxy/blackhole"
 	proxydns "github.com/xtls/xray-core/proxy/dns"
 	"github.com/xtls/xray-core/proxy/freedom"
 )
@@ -72,7 +73,7 @@ func newRouteTestContext(t *testing.T, withDNSApp bool, nameServers []*appdns.Na
 		Outbound: []*core.OutboundHandlerConfig{
 			{Tag: "direct", ProxySettings: serial.ToTypedMessage(&freedom.Config{})},
 			{Tag: "dns", ProxySettings: serial.ToTypedMessage(&proxydns.Config{})},
-			{Tag: "block", ProxySettings: serial.ToTypedMessage(&freedom.Config{Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Block, Delay: &freedom.Range{}}}})},
+			{Tag: "block", ProxySettings: serial.ToTypedMessage(&blackhole.Config{})},
 		},
 	})
 	if err != nil {

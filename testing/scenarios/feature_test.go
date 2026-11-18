@@ -21,6 +21,7 @@ import (
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/common/uuid"
 	core "github.com/xtls/xray-core/core"
+	"github.com/xtls/xray-core/proxy/blackhole"
 	"github.com/xtls/xray-core/proxy/dokodemo"
 	"github.com/xtls/xray-core/proxy/freedom"
 	v2http "github.com/xtls/xray-core/proxy/http"
@@ -61,7 +62,7 @@ func TestPassiveConnection(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 			},
 		},
@@ -122,7 +123,7 @@ func TestDialerProxy(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 			},
 		},
@@ -151,7 +152,7 @@ func TestDialerProxy(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 			},
 		},
@@ -253,7 +254,7 @@ func TestDialerProxyOverKCP(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 			},
 		},
@@ -282,7 +283,7 @@ func TestDialerProxyOverKCP(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 				SenderSettings: serial.ToTypedMessage(&proxyman.SenderConfig{
 					StreamSettings: &internet.StreamConfig{
@@ -401,11 +402,11 @@ func TestBlackhole(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				Tag:           "direct",
-				ProxySettings: serial.ToTypedMessage(&freedom.Config{Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}}}),
+				ProxySettings: serial.ToTypedMessage(&freedom.Config{FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}}}),
 			},
 			{
 				Tag:           "blocked",
-				ProxySettings: serial.ToTypedMessage(&freedom.Config{Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Block, Delay: &freedom.Range{}}}}),
+				ProxySettings: serial.ToTypedMessage(&blackhole.Config{}),
 			},
 		},
 		App: []*serial.TypedMessage{
@@ -516,7 +517,7 @@ func TestUDPConnection(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 			},
 		},
@@ -581,7 +582,7 @@ func TestDomainSniffing(t *testing.T) {
 			},
 			{
 				Tag:           "direct",
-				ProxySettings: serial.ToTypedMessage(&freedom.Config{Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}}}),
+				ProxySettings: serial.ToTypedMessage(&freedom.Config{FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}}}),
 			},
 		},
 		App: []*serial.TypedMessage{
@@ -668,7 +669,7 @@ func TestDialXray(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&freedom.Config{
-					Firewall: []*freedom.FirewallConfig{{Action: freedom.RuleAction_Allow}},
+					FinalRules: []*freedom.FinalRuleConfig{{Action: freedom.RuleAction_Allow}},
 				}),
 			},
 		},

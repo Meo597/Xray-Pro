@@ -42,17 +42,13 @@ func TestFreedomConfig(t *testing.T) {
 		},
 		{
 			Input: `{
-				"firewall": [{
+				"finalRules": [{
 					"action": "block",
 					"network": "tcp,udp",
 					"port": "53,443",
 					"ip": ["10.0.0.0/8", "2001:db8::/32"],
 					"delay": "30-60",
-					"logLevel": "debug",
-					"reply": {
-						"type": "custom",
-						"customResponseData": "Y3VzdG9tIHJlc3BvbnNl"
-					}
+					"logLevel": "debug"
 				}, {
 					"action": "allow",
 					"network": ["udp"]
@@ -60,7 +56,7 @@ func TestFreedomConfig(t *testing.T) {
 			}`,
 			Parser: loadJSON(creator),
 			Output: &freedom.Config{
-				Firewall: []*freedom.FirewallConfig{
+				FinalRules: []*freedom.FinalRuleConfig{
 					{
 						Action:   freedom.RuleAction_Block,
 						Networks: []net.Network{net.Network_TCP, net.Network_UDP},
@@ -94,10 +90,6 @@ func TestFreedomConfig(t *testing.T) {
 						},
 						Delay:    &freedom.Range{Min: 30, Max: 60},
 						LogLevel: log.Severity_Debug.Enum(),
-						Reply: &freedom.Reply{
-							Type:               "custom",
-							CustomResponseData: []byte("custom response"),
-						},
 					},
 					{
 						Action:   freedom.RuleAction_Allow,

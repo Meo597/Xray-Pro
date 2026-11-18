@@ -35,6 +35,7 @@ import (
 	_ "github.com/xtls/xray-core/app/observatory"
 
 	// Inbound and outbound proxies.
+	_ "github.com/xtls/xray-core/proxy/blackhole"
 	_ "github.com/xtls/xray-core/proxy/dns"
 	_ "github.com/xtls/xray-core/proxy/dokodemo"
 	_ "github.com/xtls/xray-core/proxy/freedom"
