@@ -76,13 +76,13 @@ func init() {
 		action:   RuleAction_Block,
 		network:  allNetworks,
 		ip:       geodata.GetPrivateIPMatcher(),
-		logLevel: log.Severity_Warning.Enum(),
+		logLevel: log.Severity_Warning,
 	}
 
 	defaultBlockAllRule = &FirewallRule{
 		action:   RuleAction_Block,
 		network:  allNetworks,
-		logLevel: log.Severity_Warning.Enum(),
+		logLevel: log.Severity_Warning,
 	}
 }
 
@@ -92,7 +92,7 @@ type FirewallRule struct {
 	port     net.MemoryPortList
 	ip       geodata.IPMatcher
 	delay    *Range
-	logLevel *log.Severity
+	logLevel log.Severity
 }
 
 // Handler handles Freedom connections.
@@ -108,7 +108,10 @@ func buildFirewallRule(config *FirewallConfig) (*FirewallRule, error) {
 	rule := &FirewallRule{
 		action:   config.GetAction(),
 		delay:    config.GetDelay(),
-		logLevel: config.LogLevel,
+		logLevel: log.Severity_Info,
+	}
+	if config.LogLevel != nil {
+		rule.logLevel = *config.LogLevel
 	}
 
 	if len(config.Networks) == 0 {
@@ -232,11 +235,7 @@ func (r *FirewallRule) blockDuration() time.Duration {
 }
 
 func (r *FirewallRule) log(ctx context.Context, msg ...interface{}) {
-	level := log.Severity_Info
-	if r.logLevel != nil {
-		level = *r.logLevel
-	}
-	switch level {
+	switch r.logLevel {
 	case log.Severity_Debug:
 		errors.LogDebug(ctx, msg...)
 	case log.Severity_Info:

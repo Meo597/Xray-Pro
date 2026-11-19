@@ -314,7 +314,9 @@ func (c *FreedomFirewallConfig) Build() (*freedom.FirewallConfig, error) {
 	}
 
 	switch strings.ToLower(c.LogLevel) {
-	case "", "info":
+	case "":
+		// nil
+	case "info":
 		rule.LogLevel = log.Severity_Info.Enum()
 	case "none":
 		rule.LogLevel = log.Severity_Unknown.Enum()
